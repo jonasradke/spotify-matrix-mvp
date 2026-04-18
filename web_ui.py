@@ -1,29 +1,10 @@
 import os
 import json
 import threading
-import ssl
 import bottle
-from bottle import request, redirect, template, ServerAdapter
+import ssl
 from wsgiref.simple_server import make_server
-
-# Custom SSL web server adapter for Bottle
-class SSLWSGIRefServer(ServerAdapter):
-    def run(self, handler):
-        srv = make_server(self.host, self.port, handler)
-        ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        
-        # Load self-signed certificates
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        cert_path = os.path.join(base_dir, 'cert.pem')
-        key_path = os.path.join(base_dir, 'key.pem')
-        
-        try:
-            ctx.load_cert_chain(certfile=cert_path, keyfile=key_path)
-        except FileNotFoundError:
-            print("WARNING: cert.pem or key.pem not found. HTTPS server will fail to start.")
-            
-        srv.socket = ctx.wrap_socket(srv.socket, server_side=True)
-        srv.serve_forever()
+from bottle import request, redirect, template
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -115,8 +96,32 @@ def start_web_server(app_state, sp_oauth):
         redirect('/')
 
     def run_web_server():
-        # Running on HTTPS port 443 with self-signed cert
-        app.run(host='0.0.0.0', port=443, server=SSLWSGIRefServer, quiet=True)
+        cert_dir = os.path.dirname(os.path.abspath(__file__))
+        cert_file = os.path.join(cert_dir, 'cert.pem')
+        key_file = os.path.join(cert_dir, 'key.pem')
+
+        # Auto-generate self-signed cert if it doesn't exist
+        if not os.path.exists(cert_file) or not os.path.exists(key_file):
+            import subprocess
+            print("Generating self-signed SSL certificates for HTTPS...")
+            subprocess.call([
+                'openssl', 'req', '-x509', '-newkey', 'rsa:2048',
+                '-keyout', key_file, '-out', cert_file,
+                '-days', '3650', '-nodes', '-subj', '/CN=matrix.local'
+            ])
+            # chmod to ensure dietpi can read them if needed
+            os.chmod(cert_file, 0o644)
+            os.chmod(key_file, 0o644)
+
+        # Create a standard WSGI server
+        srv = make_server('0.0.0.0', 443, app)
+        
+        # Wrap it with our self-signed certificates
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(certfile=cert_file, keyfile=key_file)
+        srv.socket = context.wrap_socket(srv.socket, server_side=True)
+        
+        srv.serve_forever()
 
     # Start web interface in the background
     web_thread = threading.Thread(target=run_web_server, daemon=True)
