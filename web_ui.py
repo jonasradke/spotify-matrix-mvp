@@ -227,19 +227,21 @@ HTML_TEMPLATE = """
         if(confirmAction) confirmAction();
     };
 
+    var localHash = "{{local_hash}}";
+
     function checkUpdates() {
         var btn = document.getElementById('checkUpdateBtn');
         var originalText = "Check For Updates";
         btn.innerHTML = 'Checking... <div class="spinner"></div>';
         btn.disabled = true;
         
-        fetch('/api/check_updates', { method: 'POST' })
+        fetch('https://api.github.com/repos/jonasradke/spotify-matrix-mvp/commits/main')
         .then(res => res.json())
         .then(data => {
             btn.innerHTML = originalText;
             btn.disabled = false;
             
-            if (data.status === 'available') {
+            if (data.sha && data.sha.trim() !== localHash) {
                 showModal("Update Available", "Updates are available! Do you want to install them now and restart the matrix?", true, function() {
                     btn.innerHTML = 'Updating & Restarting... <div class="spinner"></div>';
                     btn.disabled = true;
@@ -247,15 +249,15 @@ HTML_TEMPLATE = """
                     btn.classList.add('btn-green');
                     document.getElementById('updateForm').submit();
                 });
-            } else if (data.status === 'up_to_date') {
-                btn.innerHTML = 'Up to Date (' + data.remote_version + ')';
+            } else if (data.sha && data.sha.trim() === localHash) {
+                btn.innerHTML = 'Up to Date ✓';
                 btn.disabled = true;
                 setTimeout(() => { 
                     btn.innerHTML = originalText; 
                     btn.disabled = false; 
                 }, 3000);
             } else {
-                showModal("Update Error", "Update flow error: " + (data.message || "Unknown error"), false, null);
+                showModal("Update Error", "Could not verify update status.", false, null);
             }
         })
         .catch(err => {
@@ -281,6 +283,14 @@ def start_web_server(app_state, sp_oauth):
         except:
             return "Unknown Version"
 
+    def get_current_hash():
+        import subprocess
+        try:
+            cwd_path = os.path.dirname(os.path.abspath(__file__))
+            return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+        except:
+            return ""
+
     @app.route('/')
     def index():
         has_token = bool(sp_oauth.get_cached_token())
@@ -289,7 +299,8 @@ def start_web_server(app_state, sp_oauth):
                         brightness=app_state['brightness'], 
                         show_progress=app_state.get('show_progress', False),
                         progress_color=app_state.get('progress_color', '#1ED760'),
-                        version=get_current_version())
+                        version=get_current_version(),
+                        local_hash=get_current_hash())
 
     @app.route('/login')
     def login():
