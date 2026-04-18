@@ -1,0 +1,29 @@
+[Unit]
+Description=Spotify RGB Matrix Display MVP
+# Ensures the service waits for the network to be fully up before starting.
+# crucial for surviving Wi-Fi initialization on boot.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Must run as root initially to access the Pi's PWM hardware. 
+# The Python script will drop privileges to 'dietpi' afterward.
+User=root
+WorkingDirectory=/home/dietpi/spotify-matrix-mvp
+
+# Use the Python executable from the virtual environment directly
+ExecStart=/home/dietpi/spotify-matrix-mvp/.venv/bin/python /home/dietpi/spotify-matrix-mvp/main.py
+
+# Auto-restart on both clean exits (sys.exit(0) triggered by the Web UI) and crashes (WiFi drops)
+Restart=always
+RestartSec=10
+
+# Prevent systemd from giving up if the script restarts too many times (e.g., during a long internet outage)
+StartLimitIntervalSec=0
+
+# Ensure Python output is logged immediately to journalctl
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
