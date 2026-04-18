@@ -119,6 +119,14 @@ HTML_TEMPLATE = """
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        /* Custom Modal CSS */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.2s; backdrop-filter: blur(2px); }
+        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .modal { background-color: var(--card-bg); padding: 24px; border-radius: 12px; width: 85%; max-width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); transform: translateY(20px); transition: transform 0.2s; text-align: center; }
+        .modal-overlay.active .modal { transform: translateY(0); }
+        .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
+        .modal-actions .btn { margin-top: 0; flex: 1; }
     </style>
 </head>
 <body>
@@ -190,7 +198,35 @@ HTML_TEMPLATE = """
         </div>
     </div>
     
+    <!-- Custom Modal UI -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modalTitle" style="margin-bottom: 10px; font-size: 1.3rem;">Title</h3>
+            <p id="modalMessage" style="color: var(--text-secondary); font-size: 0.95rem;">Message text goes here.</p>
+            <div class="modal-actions">
+                <button id="modalCancel" class="btn btn-red" onclick="hideModal()">Cancel</button>
+                <button id="modalConfirm" class="btn btn-green">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+    var confirmAction = null;
+    function showModal(title, message, showCancel, callback) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerText = message;
+        document.getElementById('modalCancel').style.display = showCancel ? 'block' : 'none';
+        document.getElementById('customModal').classList.add('active');
+        confirmAction = callback;
+    }
+    function hideModal() {
+        document.getElementById('customModal').classList.remove('active');
+    }
+    document.getElementById('modalConfirm').onclick = function() {
+        hideModal();
+        if(confirmAction) confirmAction();
+    };
+
     function checkUpdates() {
         var btn = document.getElementById('checkUpdateBtn');
         var originalText = "Check For Updates";
@@ -204,13 +240,13 @@ HTML_TEMPLATE = """
             btn.disabled = false;
             
             if (data.status === 'available') {
-                if (confirm("Updates are available! Do you want to install them now and restart the matrix?")) {
+                showModal("Update Available", "Updates are available! Do you want to install them now and restart the matrix?", true, function() {
                     btn.innerHTML = 'Updating & Restarting... <div class="spinner"></div>';
                     btn.disabled = true;
                     btn.classList.remove('btn-blue');
                     btn.classList.add('btn-green');
                     document.getElementById('updateForm').submit();
-                }
+                });
             } else if (data.status === 'up_to_date') {
                 btn.innerHTML = 'Up to Date (' + data.remote_version + ')';
                 btn.disabled = true;
@@ -219,13 +255,13 @@ HTML_TEMPLATE = """
                     btn.disabled = false; 
                 }, 3000);
             } else {
-                alert("Update flow error: " + (data.message || "Unknown error"));
+                showModal("Update Error", "Update flow error: " + (data.message || "Unknown error"), false, null);
             }
         })
         .catch(err => {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            alert("Network error while checking for updates.");
+            showModal("Network Error", "Network error while checking for updates.", false, null);
         });
     }
     </script>
