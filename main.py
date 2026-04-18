@@ -1,3 +1,4 @@
+import os
 import time
 import requests
 import sys
@@ -13,14 +14,24 @@ from web_ui import start_web_server
 
 load_dotenv()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')
+
 # Load saved settings if they exist
 loaded_brightness = 100
 try:
-    with open('settings.json', 'r') as f:
+    with open(SETTINGS_FILE, 'r') as f:
         saved_settings = json.load(f)
         loaded_brightness = saved_settings.get('brightness', 100)
 except FileNotFoundError:
     pass
+
+# Pre-create the settings file as root so the unprivileged thread can write to it later
+if not os.path.exists(SETTINGS_FILE):
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump({'brightness': loaded_brightness}, f)
+# Ensure it's writable by all users (so the dropped 'dietpi' user can edit it)
+os.chmod(SETTINGS_FILE, 0o666)
 
 # Shared state between Web UI and Matrix Loop
 app_state = {
