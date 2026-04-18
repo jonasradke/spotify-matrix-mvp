@@ -93,6 +93,16 @@ HTML_TEMPLATE = """
             border-radius: 2px;
         }
         .slider-values { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 0.8rem; margin-top: -15px; margin-bottom: 15px; }
+        
+        /* Toggle Switch CSS */
+        .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .setting-row label { margin-bottom: 0; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider.round { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #535353; transition: .4s; border-radius: 34px; }
+        .slider.round:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider.round { background-color: var(--spotify-green); }
+        input:checked + .slider.round:before { transform: translateX(22px); }
     </style>
 </head>
 <body>
@@ -118,12 +128,21 @@ HTML_TEMPLATE = """
     <div class="card">
         <h3>Display Settings</h3>
         <form action="/save_settings" method="POST">
+            <div class="setting-row">
+                <label>Track Progress Bar</label>
+                <label class="switch">
+                    <input type="checkbox" name="show_progress" {{'checked' if show_progress else ''}}>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            
             <label>Brightness</label>
             <input type="range" name="brightness" min="1" max="100" value="{{brightness}}">
             <div class="slider-values">
                 <span>Dim</span>
                 <span>Bright</span>
             </div>
+            
             <button type="submit" class="btn btn-blue">Apply Settings</button>
         </form>
     </div>
@@ -137,7 +156,7 @@ def start_web_server(app_state, sp_oauth):
     @app.route('/')
     def index():
         has_token = bool(sp_oauth.get_cached_token())
-        return template(HTML_TEMPLATE, has_token=has_token, brightness=app_state['brightness'])
+        return template(HTML_TEMPLATE, has_token=has_token, brightness=app_state['brightness'], show_progress=app_state.get('show_progress', False))
 
     @app.route('/login')
     def login():
@@ -160,12 +179,14 @@ def start_web_server(app_state, sp_oauth):
     def save_settings():
         try:
             b = request.forms.get('brightness', type=int)
+            p = request.forms.get('show_progress') == 'on'
             if b:
                 app_state['brightness'] = b
+                app_state['show_progress'] = p
                 # Save settings persistently to a JSON file
                 settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
                 with open(settings_path, 'w') as f:
-                    json.dump({'brightness': b}, f)
+                    json.dump({'brightness': b, 'show_progress': p}, f)
         except Exception as e:
             return f"Error saving settings: {str(e)}"
         

@@ -4,7 +4,7 @@ import requests
 import sys
 import json
 from io import BytesIO
-from PIL import Image
+from PIL import Image, ImageDraw
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
@@ -19,23 +19,26 @@ SETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')
 
 # Load saved settings if they exist
 loaded_brightness = 100
+loaded_progress = False
 try:
     with open(SETTINGS_FILE, 'r') as f:
         saved_settings = json.load(f)
         loaded_brightness = saved_settings.get('brightness', 100)
+        loaded_progress = saved_settings.get('show_progress', False)
 except FileNotFoundError:
     pass
 
 # Pre-create the settings file as root so the unprivileged thread can write to it later
 if not os.path.exists(SETTINGS_FILE):
     with open(SETTINGS_FILE, 'w') as f:
-        json.dump({'brightness': loaded_brightness}, f)
+        json.dump({'brightness': loaded_brightness, 'show_progress': loaded_progress}, f)
 # Ensure it's writable by all users (so the dropped 'dietpi' user can edit it)
 os.chmod(SETTINGS_FILE, 0o666)
 
 # Shared state between Web UI and Matrix Loop
 app_state = {
     'brightness': loaded_brightness,
+    'show_progress': loaded_progress,
     'shutdown': False,
     'restart': False,
     'reload_spotify': False
@@ -101,8 +104,8 @@ try:
         # Sync live brightness changes
         if matrix.brightness != app_state['brightness']:
             matrix.brightness = app_state['brightness']
-            if last_img:
-                matrix.SetImage(last_img)
+            # We don't need to force matrix.SetImage(last_img) here anymore 
+            # because the progress bar loop below will redraw it instantly anyway!
 
         # Handle live Spotify linking and unlinking
         if app_state.get('reload_spotify'):
@@ -139,9 +142,19 @@ try:
                     if img.size != (64, 64):
                         img = img.resize((64, 64), Image.Resampling.NEAREST)
 
-                    matrix.SetImage(img)
                     last_url = url
                     last_img = img
+
+                # Dynamic progress bar redrawing over the cached image
+                display_img = last_img.copy()
+                if app_state.get('show_progress'):
+                    progress_ms = track.get('progress_ms', 0) or 0
+                    duration_ms = track['item'].get('duration_ms', 1) or 1
+                    width = int((progress_ms / duration_ms) * 64)
+                    draw = ImageDraw.Draw(display_img)
+                    draw.line((0, 63, width, 63), fill=(30, 215, 96)) # Spotify green
+                
+                matrix.SetImage(display_img)
             else:
                 # Clear matrix if paused/stopped
                 if last_url:
