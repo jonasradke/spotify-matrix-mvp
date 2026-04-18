@@ -81,9 +81,10 @@ def start_web_server(app_state, sp_oauth):
                 settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
                 with open(settings_path, 'w') as f:
                     json.dump({'brightness': b}, f)
-            redirect('/')
         except Exception as e:
             return f"Error saving settings: {str(e)}"
+        
+        redirect('/')
 
     @app.route('/logout')
     def logout():
