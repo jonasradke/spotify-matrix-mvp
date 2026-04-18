@@ -159,12 +159,9 @@ HTML_TEMPLATE = """
         <h3>System Management</h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Manage updates and device power.</p>
         <div style="display: flex; gap: 10px; flex-direction: column;">
-            <form action="/check_updates" method="POST">
-                <button type="submit" class="btn btn-blue" style="margin-top: 5px;">Check For Updates</button>
-            </form>
-            <form action="/system_update" method="POST">
-                <button type="submit" class="btn btn-red" style="margin-top: 5px;">Force Update & Restart</button>
-            </form>
+            <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Check For Updates</button>
+            <form id="updateForm" action="/system_update" method="POST" style="display: none;"></form>
+            
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <form action="/system_power" method="POST" style="flex: 1;">
                     <button type="submit" name="command" value="reboot" class="btn btn-red" style="margin-top: 0;">Reboot</button>
@@ -175,6 +172,37 @@ HTML_TEMPLATE = """
             </div>
         </div>
     </div>
+    
+    <script>
+    function checkUpdates() {
+        var btn = document.getElementById('checkUpdateBtn');
+        var originalText = btn.innerText;
+        btn.innerText = 'Checking...';
+        btn.disabled = true;
+        
+        fetch('/api/check_updates', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            
+            if (data.status === 'available') {
+                if (confirm("Updates are available! Do you want to install them now and restart the matrix?")) {
+                    document.getElementById('updateForm').submit();
+                }
+            } else if (data.status === 'up_to_date') {
+                alert("You are already on the latest version.");
+            } else {
+                alert("Update flow error: " + (data.message || "Unknown error"));
+            }
+        })
+        .catch(err => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            alert("Network error while checking for updates.");
+        });
+    }
+    </script>
 </body>
 </html>
 """
@@ -241,11 +269,10 @@ def start_web_server(app_state, sp_oauth):
         app_state['reload_spotify'] = True
         redirect('/')
 
-    @app.route('/check_updates', method='POST')
+    @app.route('/api/check_updates', method='POST')
     def check_updates():
         import subprocess
         try:
-            # Bypass environment variables completely and statically point Git to the dietpi credentials file
             env = os.environ.copy()
             env['GIT_TERMINAL_PROMPT'] = '0'
             cwd_path = os.path.dirname(os.path.abspath(__file__))
@@ -253,23 +280,15 @@ def start_web_server(app_state, sp_oauth):
             subprocess.check_call(['git', 'fetch'], env=env, cwd=cwd_path)
             result = subprocess.check_output(['git', 'status', '-uno'], env=env, cwd=cwd_path).decode('utf-8')
             if 'behind' in result:
-                msg = "Updates are available! Use the 'Force Update & Restart' button to install."
+                return {'status': 'available'}
             elif 'up to date' in result:
-                msg = "You are already on the latest version."
+                return {'status': 'up_to_date'}
             else:
-                msg = "Checked for updates. If you still want to re-download, use 'Force Update'."
+                return {'status': 'unknown', 'message': 'Unknown git status string.'}
         except subprocess.CalledProcessError as e:
-            msg = f"Update check failed (Authentication required). Please log in to the Pi and run 'git pull' manually to save credentials."
+            return {'status': 'error', 'message': 'Git fetch failed (Authentication required). Ensure your Git remote URL contains the Personal Access Token.'}
         except Exception as e:
-            msg = f"Error checking updates: {e}"
-        
-        return f"""
-        <body style="background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px;">
-            <h2>Update Status</h2>
-            <p style="color:#b3b3b3;">{msg}</p>
-            <a href="/" style="display: inline-block; padding: 14px 24px; background-color: #1DB954; color: black; text-decoration: none; border-radius: 500px; font-weight: bold; margin-top: 20px;">Back to Settings</a>
-        </body>
-        """
+            return {'status': 'error', 'message': str(e)}
 
     @app.route('/system_power', method='POST')
     def system_power():
