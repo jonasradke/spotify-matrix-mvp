@@ -103,6 +103,22 @@ HTML_TEMPLATE = """
         .slider.round:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider.round { background-color: var(--spotify-green); }
         input:checked + .slider.round:before { transform: translateX(22px); }
+        
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            vertical-align: middle;
+            margin-left: 5px;
+            margin-top: -2px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -178,7 +194,7 @@ HTML_TEMPLATE = """
     function checkUpdates() {
         var btn = document.getElementById('checkUpdateBtn');
         var originalText = "Check For Updates";
-        btn.innerHTML = 'Checking... <span style="font-size: 0.8em; margin-left: 5px;">⏳</span>';
+        btn.innerHTML = 'Checking... <div class="spinner"></div>';
         btn.disabled = true;
         
         fetch('/api/check_updates', { method: 'POST' })
@@ -189,7 +205,7 @@ HTML_TEMPLATE = """
             
             if (data.status === 'available') {
                 if (confirm("Updates are available! Do you want to install them now and restart the matrix?")) {
-                    btn.innerHTML = 'Updating & Restarting... <span style="font-size: 0.8em; margin-left: 5px;">⏳</span>';
+                    btn.innerHTML = 'Updating & Restarting... <div class="spinner"></div>';
                     btn.disabled = true;
                     btn.classList.remove('btn-blue');
                     btn.classList.add('btn-green');
@@ -375,8 +391,13 @@ def start_web_server(app_state, sp_oauth):
             os.chmod(cert_file, 0o644)
             os.chmod(key_file, 0o644)
 
-        # Create a standard WSGI server
-        srv = make_server('0.0.0.0', 443, app)
+        # Create a multithreaded WSGI server so background checks don't block the UI
+        import socketserver
+        from wsgiref.simple_server import WSGIServer
+        class ThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
+            daemon_threads = True
+
+        srv = make_server('0.0.0.0', 443, app, server_class=ThreadingWSGIServer)
         
         # Wrap it with our self-signed certificates
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
