@@ -1,11 +1,45 @@
 import time
 import requests
+import sys
+import json
 from io import BytesIO
 from PIL import Image
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 from rgbmatrix import RGBMatrix, RGBMatrixOptions
+
+from web_ui import start_web_server
+
+load_dotenv()
+
+# Load saved settings if they exist
+loaded_brightness = 100
+try:
+    with open('settings.json', 'r') as f:
+        saved_settings = json.load(f)
+        loaded_brightness = saved_settings.get('brightness', 100)
+except FileNotFoundError:
+    pass
+
+# Shared state between Web UI and Matrix Loop
+app_state = {
+    'brightness': loaded_brightness,
+    'shutdown': False,
+    'restart': False
+}
+
+# Spotipy OAuth configuration
+sp_oauth = SpotifyOAuth(
+    scope='user-read-currently-playing user-read-playback-state',
+    open_browser=False,
+    redirect_uri="http://spotify-matrix.local/callback" # Change matrix IP if mDNS isn't working
+)
+
+# Start web interface in the background
+start_web_server(app_state, sp_oauth)
+
+# --- 2. Setup Matrix ---
 
 load_dotenv()
 
@@ -15,7 +49,7 @@ opts.rows = 64
 opts.cols = 64
 opts.hardware_mapping = 'adafruit-hat-pwm'
 opts.pwm_bits = 8
-opts.brightness = 100
+opts.brightness = app_state['brightness']
 opts.gpio_slowdown = 0
 opts.drop_privileges = True
 opts.drop_priv_user = 'dietpi'
@@ -27,18 +61,36 @@ opts.pwm_lsb_nanoseconds =75
 matrix = RGBMatrix(options=opts)
 
 # 2. Setup Spotify
-sp = Spotify(auth_manager=SpotifyOAuth(
-    scope='user-read-currently-playing user-read-playback-state',
-    open_browser=False
-))
+try:
+    # If .cache exists, we can init Spotipy and poll.
+    sp = Spotify(auth_manager=sp_oauth)
+    sp.current_playback()  # Check token validity
+except Exception as e:
+    sp = None
+    print("Not logged into Spotify yet. Visit http://<raspberry-pi-ip> to do first-time setup.")
 
 # 3. Main Loop
 last_url = None
-print('Spotify MVP Running... Press Ctrl+C to exit.')
+print('Spotify MVP Running... Connect to http://<pi-ip> to configure.')
 
 try:
     while True:
+        # Check if the Web UI requested a restart
+        if app_state['restart']:
+            print("Restarting gracefully per Web UI request...")
+            matrix.Clear()
+            sys.exit(0)
+
+        # Sync live brightness changes
+        if matrix.brightness != app_state['brightness']:
+            matrix.brightness = app_state['brightness']
+
         try:
+            if not sp:
+                # Still waiting on a valid token from the web UI
+                time.sleep(2)
+                continue
+
             track = sp.current_playback()
 
             # Check if music is playing
