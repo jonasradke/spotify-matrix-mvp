@@ -69,7 +69,7 @@ def start_web_server(app_state, sp_oauth):
         if code:
             # This writes the .cache file automatically
             sp_oauth.get_access_token(code, as_dict=False)
-            app_state['restart'] = True # Restart loop to re-initialize Spotify client
+            app_state['reload_spotify'] = True # dynamically reload spotify client
             return "Login successful! You can close this window and the matrix will update."
         return "Error generating token."
 
@@ -92,7 +92,7 @@ def start_web_server(app_state, sp_oauth):
     def logout():
         if os.path.exists(".cache"):
             os.remove(".cache")
-        app_state['restart'] = True
+        app_state['reload_spotify'] = True
         redirect('/')
 
     def run_web_server():

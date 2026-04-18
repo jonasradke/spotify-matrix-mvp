@@ -37,7 +37,8 @@ os.chmod(SETTINGS_FILE, 0o666)
 app_state = {
     'brightness': loaded_brightness,
     'shutdown': False,
-    'restart': False
+    'restart': False,
+    'reload_spotify': False
 }
 
 # Spotipy OAuth configuration
@@ -102,6 +103,20 @@ try:
             matrix.brightness = app_state['brightness']
             if last_img:
                 matrix.SetImage(last_img)
+
+        # Handle live Spotify linking and unlinking
+        if app_state.get('reload_spotify'):
+            app_state['reload_spotify'] = False
+            print("Reloading Spotify credentials live...")
+            try:
+                sp = Spotify(auth_manager=sp_oauth)
+                sp.current_playback()
+            except Exception as e:
+                sp = None
+                matrix.Clear()
+                last_url = None
+                last_img = None
+                print("Spotify unlinked or invalid token.")
 
         try:
             if not sp:
