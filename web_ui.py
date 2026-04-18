@@ -250,10 +250,8 @@ def start_web_server(app_state, sp_oauth):
             env['GIT_TERMINAL_PROMPT'] = '0'
             cwd_path = os.path.dirname(os.path.abspath(__file__))
             
-            git_cmd = ['git', '-c', 'credential.helper=store --file=/home/dietpi/.git-credentials']
-            
-            subprocess.check_call(git_cmd + ['fetch'], env=env, cwd=cwd_path)
-            result = subprocess.check_output(git_cmd + ['status', '-uno'], env=env, cwd=cwd_path).decode('utf-8')
+            subprocess.check_call(['git', 'fetch'], env=env, cwd=cwd_path)
+            result = subprocess.check_output(['git', 'status', '-uno'], env=env, cwd=cwd_path).decode('utf-8')
             if 'behind' in result:
                 msg = "Updates are available! Use the 'Force Update & Restart' button to install."
             elif 'up to date' in result:
@@ -302,8 +300,7 @@ def start_web_server(app_state, sp_oauth):
             env['GIT_TERMINAL_PROMPT'] = '0'
             cwd_path = os.path.dirname(os.path.abspath(__file__))
             
-            git_cmd = ['git', '-c', 'credential.helper=store --file=/home/dietpi/.git-credentials', 'pull']
-            subprocess.check_call(git_cmd, env=env, cwd=cwd_path)
+            subprocess.check_call(['git', 'pull'], env=env, cwd=cwd_path)
         except Exception as e:
             print(f"Error pulling updates: {e}")
         
