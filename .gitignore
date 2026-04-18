@@ -1,0 +1,13 @@
+# Ignore the Python virtual environment
+.venv/
+__pycache__/
+
+# Ignore your Spotify secrets and OAuth tokens (CRITICAL!)
+.env
+.cache
+
+# Ignore IDE settings
+.vscode/
+
+# Ignore compiled python files
+*.pyc
