@@ -12,6 +12,9 @@ Type=simple
 User=root
 WorkingDirectory=/home/dietpi/spotify-matrix-mvp
 
+# Limit CPU to 90% so background tasks (updates/web UI) stay fast
+CPUQuota=90%
+
 # Use the Python executable from the virtual environment directly
 ExecStart=/home/dietpi/spotify-matrix-mvp/.venv/bin/python /home/dietpi/spotify-matrix-mvp/main.py
 
