@@ -39,6 +39,10 @@ sp_oauth = SpotifyOAuth(
 # Start web interface in the background
 start_web_server(app_state, sp_oauth)
 
+# Give the background web server thread 2 seconds to actually start 
+# and bind to Port 80 while the script still has 'root' privileges!
+time.sleep(2)
+
 # --- 2. Setup Matrix ---
 
 load_dotenv()
