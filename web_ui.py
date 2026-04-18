@@ -245,14 +245,19 @@ def start_web_server(app_state, sp_oauth):
     def check_updates():
         import subprocess
         try:
-            subprocess.call(['git', 'fetch'])
-            result = subprocess.check_output(['git', 'status', '-uno']).decode('utf-8')
+            # Prevent git from hanging while trying to ask for a username in the background
+            env = os.environ.copy()
+            env['GIT_TERMINAL_PROMPT'] = '0'
+            subprocess.check_call(['git', 'fetch'], env=env)
+            result = subprocess.check_output(['git', 'status', '-uno'], env=env).decode('utf-8')
             if 'behind' in result:
                 msg = "Updates are available! Use the 'Force Update & Restart' button to install."
             elif 'up to date' in result:
                 msg = "You are already on the latest version."
             else:
                 msg = "Checked for updates. If you still want to re-download, use 'Force Update'."
+        except subprocess.CalledProcessError as e:
+            msg = f"Update check failed (Authentication required). Please log in to the Pi and run 'git pull' manually to save credentials."
         except Exception as e:
             msg = f"Error checking updates: {e}"
         
@@ -289,7 +294,9 @@ def start_web_server(app_state, sp_oauth):
         import subprocess
         try:
             # Tell the Pi to pull the absolute newest changes from GitHub
-            subprocess.call(['git', 'pull'])
+            env = os.environ.copy()
+            env['GIT_TERMINAL_PROMPT'] = '0'
+            subprocess.check_call(['git', 'pull'], env=env)
         except Exception as e:
             print(f"Error pulling updates: {e}")
         
