@@ -157,7 +157,8 @@ HTML_TEMPLATE = """
 
     <div class="card">
         <h3>System Management</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Manage updates and device power.</p>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 5px;">Manage updates and device power.</p>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Version: <span style="color: var(--spotify-green);">{{version}}</span></p>
         <div style="display: flex; gap: 10px; flex-direction: column;">
             <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Check For Updates</button>
             <form id="updateForm" action="/system_update" method="POST" style="display: none;"></form>
@@ -176,28 +177,37 @@ HTML_TEMPLATE = """
     <script>
     function checkUpdates() {
         var btn = document.getElementById('checkUpdateBtn');
-        var originalText = btn.innerText;
-        btn.innerText = 'Checking...';
+        var originalText = "Check For Updates";
+        btn.innerHTML = 'Checking... <span style="font-size: 0.8em; margin-left: 5px;">⏳</span>';
         btn.disabled = true;
         
         fetch('/api/check_updates', { method: 'POST' })
         .then(res => res.json())
         .then(data => {
-            btn.innerText = originalText;
+            btn.innerHTML = originalText;
             btn.disabled = false;
             
             if (data.status === 'available') {
                 if (confirm("Updates are available! Do you want to install them now and restart the matrix?")) {
+                    btn.innerHTML = 'Updating & Restarting... <span style="font-size: 0.8em; margin-left: 5px;">⏳</span>';
+                    btn.disabled = true;
+                    btn.classList.remove('btn-blue');
+                    btn.classList.add('btn-green');
                     document.getElementById('updateForm').submit();
                 }
             } else if (data.status === 'up_to_date') {
-                alert("You are already on the latest version.");
+                btn.innerHTML = 'Up to Date (' + data.remote_version + ')';
+                btn.disabled = true;
+                setTimeout(() => { 
+                    btn.innerHTML = originalText; 
+                    btn.disabled = false; 
+                }, 3000);
             } else {
                 alert("Update flow error: " + (data.message || "Unknown error"));
             }
         })
         .catch(err => {
-            btn.innerText = originalText;
+            btn.innerHTML = originalText;
             btn.disabled = false;
             alert("Network error while checking for updates.");
         });
@@ -210,6 +220,15 @@ HTML_TEMPLATE = """
 def start_web_server(app_state, sp_oauth):
     app = bottle.Bottle()
 
+    def get_current_version():
+        import subprocess
+        try:
+            cwd_path = os.path.dirname(os.path.abspath(__file__))
+            version = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+            return f"Build {version}"
+        except:
+            return "Unknown Version"
+
     @app.route('/')
     def index():
         has_token = bool(sp_oauth.get_cached_token())
@@ -217,7 +236,8 @@ def start_web_server(app_state, sp_oauth):
                         has_token=has_token, 
                         brightness=app_state['brightness'], 
                         show_progress=app_state.get('show_progress', False),
-                        progress_color=app_state.get('progress_color', '#1ED760'))
+                        progress_color=app_state.get('progress_color', '#1ED760'),
+                        version=get_current_version())
 
     @app.route('/login')
     def login():
@@ -279,10 +299,12 @@ def start_web_server(app_state, sp_oauth):
             
             subprocess.check_call(['git', 'fetch'], env=env, cwd=cwd_path)
             result = subprocess.check_output(['git', 'status', '-uno'], env=env, cwd=cwd_path).decode('utf-8')
+            remote_ver = subprocess.check_output(['git', 'rev-parse', '--short', 'origin/main'], env=env, cwd=cwd_path).decode('utf-8').strip()
+            
             if 'behind' in result:
-                return {'status': 'available'}
+                return {'status': 'available', 'remote_version': f"Build {remote_ver}"}
             elif 'up to date' in result:
-                return {'status': 'up_to_date'}
+                return {'status': 'up_to_date', 'remote_version': f"Build {remote_ver}"}
             else:
                 return {'status': 'unknown', 'message': 'Unknown git status string.'}
         except subprocess.CalledProcessError as e:
