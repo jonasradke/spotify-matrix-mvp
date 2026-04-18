@@ -235,13 +235,14 @@ HTML_TEMPLATE = """
         btn.innerHTML = 'Checking... <div class="spinner"></div>';
         btn.disabled = true;
         
-        fetch('https://api.github.com/repos/jonasradke/spotify-matrix-mvp/commits/main')
+        // Let the Pi do the heavy lifting safely through its own GitHub authentication token
+        fetch('/api/check_updates', { method: 'POST' })
         .then(res => res.json())
         .then(data => {
             btn.innerHTML = originalText;
             btn.disabled = false;
             
-            if (data.sha && data.sha.trim() !== localHash) {
+            if (data.status === 'available') {
                 showModal("Update Available", "Updates are available! Do you want to install them now and restart the matrix?", true, function() {
                     btn.innerHTML = 'Updating & Restarting... <div class="spinner"></div>';
                     btn.disabled = true;
@@ -249,7 +250,7 @@ HTML_TEMPLATE = """
                     btn.classList.add('btn-green');
                     document.getElementById('updateForm').submit();
                 });
-            } else if (data.sha && data.sha.trim() === localHash) {
+            } else if (data.status === 'up_to_date') {
                 btn.innerHTML = 'Up to Date ✓';
                 btn.disabled = true;
                 setTimeout(() => { 
@@ -257,7 +258,7 @@ HTML_TEMPLATE = """
                     btn.disabled = false; 
                 }, 3000);
             } else {
-                showModal("Update Error", "Could not verify update status.", false, null);
+                showModal("Update Error", "Could not verify update status. Check internet.", false, null);
             }
         })
         .catch(err => {
@@ -351,7 +352,28 @@ def start_web_server(app_state, sp_oauth):
             os.remove(".cache")
         app_state['reload_spotify'] = True
         redirect('/')
-
+    @app.route('/api/check_updates', method='POST')
+    def check_updates():
+        import subprocess
+        try:
+            cwd_path = os.path.dirname(os.path.abspath(__file__))
+            
+            # Use git locally so it uses the Pi's saved authentication token
+            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+            
+            # Ping GitHub securely from the Pi
+            remote_output = subprocess.check_output(['git', 'ls-remote', 'origin', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+            
+            if not remote_output:
+                return {'status': 'unknown', 'message': 'Could not connect to GitHub.'}
+            
+            remote_hash = remote_output.split()[0]
+            if local_hash != remote_hash:
+                return {'status': 'available'}
+            else:
+                return {'status': 'up_to_date'}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
     @app.route('/api/check_updates', method='POST')
     def check_updates():
         import subprocess
