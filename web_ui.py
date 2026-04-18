@@ -70,7 +70,7 @@ def start_web_server(app_state, sp_oauth):
             # This writes the .cache file automatically
             sp_oauth.get_access_token(code, as_dict=False)
             app_state['reload_spotify'] = True # dynamically reload spotify client
-            return "Login successful! You can close this window and the matrix will update."
+            redirect('/')
         return "Error generating token."
 
     @app.route('/save_settings', method='POST')
