@@ -248,8 +248,11 @@ def start_web_server(app_state, sp_oauth):
             # Prevent git from hanging while trying to ask for a username in the background
             env = os.environ.copy()
             env['GIT_TERMINAL_PROMPT'] = '0'
-            subprocess.check_call(['git', 'fetch'], env=env)
-            result = subprocess.check_output(['git', 'status', '-uno'], env=env).decode('utf-8')
+            env['HOME'] = '/home/dietpi'  # Force home to dietpi where the git credentials actually live
+            cwd_path = os.path.dirname(os.path.abspath(__file__))
+            
+            subprocess.check_call(['git', 'fetch'], env=env, cwd=cwd_path)
+            result = subprocess.check_output(['git', 'status', '-uno'], env=env, cwd=cwd_path).decode('utf-8')
             if 'behind' in result:
                 msg = "Updates are available! Use the 'Force Update & Restart' button to install."
             elif 'up to date' in result:
@@ -296,7 +299,10 @@ def start_web_server(app_state, sp_oauth):
             # Tell the Pi to pull the absolute newest changes from GitHub
             env = os.environ.copy()
             env['GIT_TERMINAL_PROMPT'] = '0'
-            subprocess.check_call(['git', 'pull'], env=env)
+            env['HOME'] = '/home/dietpi'
+            cwd_path = os.path.dirname(os.path.abspath(__file__))
+            
+            subprocess.check_call(['git', 'pull'], env=env, cwd=cwd_path)
         except Exception as e:
             print(f"Error pulling updates: {e}")
         
