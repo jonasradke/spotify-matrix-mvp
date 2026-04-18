@@ -18,6 +18,7 @@ ExecStart=/home/dietpi/spotify-matrix-mvp/.venv/bin/python /home/dietpi/spotify-
 # Auto-restart on both clean exits (sys.exit(0) triggered by the Web UI) and crashes (WiFi drops)
 Restart=always
 RestartSec=10
+LimitRTPRIO=99
 
 # Prevent systemd from giving up if the script restarts too many times (e.g., during a long internet outage)
 StartLimitIntervalSec=0
