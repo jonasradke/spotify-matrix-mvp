@@ -44,7 +44,7 @@ app_state = {
 sp_oauth = SpotifyOAuth(
     scope='user-read-currently-playing user-read-playback-state',
     open_browser=False,
-    redirect_uri="http://spotify-matrix.local/callback" # Change matrix IP if mDNS isn't working
+    redirect_uri="http://matrix.local/callback" # Change matrix IP if mDNS isn't working
 )
 
 # Start web interface in the background
