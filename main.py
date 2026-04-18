@@ -44,7 +44,7 @@ app_state = {
 sp_oauth = SpotifyOAuth(
     scope='user-read-currently-playing user-read-playback-state',
     open_browser=False,
-    redirect_uri="https://matrix.local/callback" # Must exactly match Spotify Dashboard
+    redirect_uri="https://matrix.local/callback" # Change matrix IP if mDNS isn't working
 )
 
 # Start web interface in the background
@@ -82,12 +82,12 @@ try:
     sp.current_playback()  # Check token validity
 except Exception as e:
     sp = None
-    print("Not logged into Spotify yet. Visit http://<raspberry-pi-ip> to do first-time setup.")
+    print("Not logged into Spotify yet. Visit https://<raspberry-pi-ip> to do first-time setup.")
 
 # 3. Main Loop
 last_url = None
 last_img = None
-print('Spotify MVP Running... Connect to http://<pi-ip> to configure.')
+print('Spotify MVP Running... Connect to https://<pi-ip> to configure.')
 
 try:
     while True:
