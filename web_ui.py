@@ -151,6 +151,14 @@ HTML_TEMPLATE = """
             <button type="submit" class="btn btn-blue">Apply Settings</button>
         </form>
     </div>
+
+    <div class="card">
+        <h3>System Management</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Download the latest software updates and restart the matrix.</p>
+        <form action="/system_update" method="POST">
+            <button type="submit" class="btn btn-red">Update & Restart</button>
+        </form>
+    </div>
 </body>
 </html>
 """
@@ -210,6 +218,27 @@ def start_web_server(app_state, sp_oauth):
             os.remove(".cache")
         app_state['reload_spotify'] = True
         redirect('/')
+
+    @app.route('/system_update', method='POST')
+    def system_update():
+        import subprocess
+        try:
+            # Tell the Pi to pull the absolute newest changes from GitHub
+            subprocess.call(['git', 'pull'])
+        except Exception as e:
+            print(f"Error pulling updates: {e}")
+        
+        # Trigger graceful systemd restart in main.py
+        app_state['restart'] = True
+        
+        return """
+        <body style="background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px;">
+            <h2>Updating & Restarting...</h2>
+            <p style="color:#b3b3b3;">The matrix is downloading new code and rebooting.</p>
+            <p style="color:#b3b3b3;">This page will auto-refresh in 15 seconds.</p>
+            <meta http-equiv="refresh" content="15;url=/" />
+        </body>
+        """
 
     def run_web_server():
         cert_dir = os.path.dirname(os.path.abspath(__file__))
