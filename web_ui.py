@@ -276,8 +276,8 @@ def start_web_server(app_state, sp_oauth):
         import subprocess
         try:
             cwd_path = os.path.dirname(os.path.abspath(__file__))
-            version = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
-            return f"Build {version}"
+            commits = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+            return f"v1.0.{commits}"
         except:
             return "Unknown Version"
 
@@ -349,16 +349,19 @@ def start_web_server(app_state, sp_oauth):
             env['GIT_TERMINAL_PROMPT'] = '0'
             cwd_path = os.path.dirname(os.path.abspath(__file__))
             
-            subprocess.check_call(['git', 'fetch'], env=env, cwd=cwd_path)
-            result = subprocess.check_output(['git', 'status', '-uno'], env=env, cwd=cwd_path).decode('utf-8')
-            remote_ver = subprocess.check_output(['git', 'rev-parse', '--short', 'origin/main'], env=env, cwd=cwd_path).decode('utf-8').strip()
+            # Super fast checking: query remote github hash directly without downloading files
+            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+            remote_output = subprocess.check_output(['git', 'ls-remote', 'origin', 'HEAD'], env=env, cwd=cwd_path).decode('utf-8').strip()
             
-            if 'behind' in result:
-                return {'status': 'available', 'remote_version': f"Build {remote_ver}"}
-            elif 'up to date' in result:
-                return {'status': 'up_to_date', 'remote_version': f"Build {remote_ver}"}
+            if not remote_output:
+                return {'status': 'unknown', 'message': 'Could not connect to GitHub.'}
+            
+            remote_hash = remote_output.split()[0]
+            if local_hash != remote_hash:
+                return {'status': 'available', 'remote_version': f"New Update"}
             else:
-                return {'status': 'unknown', 'message': 'Unknown git status string.'}
+                commits = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+                return {'status': 'up_to_date', 'remote_version': f"v1.0.{commits}"}
         except subprocess.CalledProcessError as e:
             return {'status': 'error', 'message': 'Git fetch failed (Authentication required). Ensure your Git remote URL contains the Personal Access Token.'}
         except Exception as e:
@@ -401,12 +404,23 @@ def start_web_server(app_state, sp_oauth):
         app_state['restart'] = True
         
         return """
-        <body style="background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px;">
-            <h2>Updating & Restarting...</h2>
-            <p style="color:#b3b3b3;">The matrix is downloading new code and rebooting.</p>
-            <p style="color:#b3b3b3;">This page will auto-refresh in 15 seconds.</p>
+        <html>
+        <head>
+            <style>
+                body { background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px; }
+                p { color:#b3b3b3; }
+                .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #1DB954; animation: spin 1s ease-in-out infinite; margin-top: 20px; }
+                @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
             <meta http-equiv="refresh" content="15;url=/" />
+        </head>
+        <body>
+            <h2>Updating & Restarting...</h2>
+            <div class="spinner"></div>
+            <p style="margin-top: 30px;">The matrix is downloading new code and rebooting.</p>
+            <p>This page will auto-refresh in 15 seconds.</p>
         </body>
+        </html>
         """
 
     def run_web_server():
