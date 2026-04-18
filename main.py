@@ -86,6 +86,7 @@ except Exception as e:
 
 # 3. Main Loop
 last_url = None
+last_img = None
 print('Spotify MVP Running... Connect to http://<pi-ip> to configure.')
 
 try:
@@ -99,6 +100,8 @@ try:
         # Sync live brightness changes
         if matrix.brightness != app_state['brightness']:
             matrix.brightness = app_state['brightness']
+            if last_img:
+                matrix.SetImage(last_img)
 
         try:
             if not sp:
@@ -123,11 +126,13 @@ try:
 
                     matrix.SetImage(img)
                     last_url = url
+                    last_img = img
             else:
                 # Clear matrix if paused/stopped
                 if last_url:
                     matrix.Clear()
                     last_url = None
+                    last_img = None
         except Exception as e:
             print(f'Error: {e}')
         time.sleep(1)
