@@ -123,6 +123,26 @@ def start_web_server(app_state, sp_oauth):
         
         srv.serve_forever()
 
-    # Start web interface in the background
+    def run_http_redirect_server():
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        
+        class RedirectHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(301)
+                self.send_header('Location', 'https://matrix.local' + self.path)
+                self.end_headers()
+                
+            def do_POST(self):
+                self.do_GET()
+                
+        # Running on port 80 since systemd script starts this as root
+        app_redirect = HTTPServer(('0.0.0.0', 80), RedirectHandler)
+        app_redirect.serve_forever()
+
+    # Start HTTPS web interface in the background
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
+
+    # Start HTTP redirect server in the background
+    redirect_thread = threading.Thread(target=run_http_redirect_server, daemon=True)
+    redirect_thread.start()
