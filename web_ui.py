@@ -13,35 +13,118 @@ HTML_TEMPLATE = """
     <title>Spotify Matrix Settings</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-        .card { border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .btn { display: inline-block; padding: 10px 15px; margin: 5px 0; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; color: white;}
-        .btn-green { background-color: #1DB954; }
-        .btn-blue { background-color: #007BFF; }
-        .btn-red { background-color: #DC3545; }
-        input[type=number] { width: 100%; padding: 8px; margin: 10px 0;  box-sizing: border-box;}
+        :root {
+            --bg-color: #121212;
+            --card-bg: #181818;
+            --text-color: #ffffff;
+            --text-secondary: #b3b3b3;
+            --spotify-green: #1DB954;
+            --spotify-green-hover: #1ed760;
+            --danger-color: #e91429;
+            --danger-hover: #ff1a33;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px; 
+            max-width: 500px; 
+            margin: auto; 
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        h2 { text-align: center; margin-bottom: 30px; font-weight: 700; letter-spacing: -0.04em; }
+        h3 { margin-top: 0; font-size: 1.2rem; font-weight: 600; }
+        .card { 
+            background-color: var(--card-bg); 
+            padding: 24px; 
+            border-radius: 12px; 
+            margin-bottom: 24px; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .status { margin: 15px 0; font-size: 1rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .status.success { color: var(--spotify-green); }
+        .btn { 
+            display: block; 
+            width: 100%; 
+            padding: 14px; 
+            margin-top: 15px; 
+            border: none; 
+            border-radius: 500px; 
+            font-size: 1rem; 
+            font-weight: 700; 
+            text-align: center; 
+            cursor: pointer; 
+            text-decoration: none; 
+            color: white; 
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .btn-green { background-color: var(--spotify-green); color: #000; }
+        .btn-green:hover { background-color: var(--spotify-green-hover); transform: scale(1.02); }
+        .btn-red { background-color: transparent; border: 1px solid var(--text-secondary); color: var(--text-color); }
+        .btn-red:hover { border-color: var(--text-color); transform: scale(1.02); }
+        .btn-blue { background-color: #ffffff; color: #000; }
+        .btn-blue:hover { background-color: #f0f0f0; transform: scale(1.02); }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-secondary); }
+        input[type=range] { 
+            -webkit-appearance: none;
+            width: 100%; 
+            background: transparent;
+            margin: 15px 0 25px 0;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #535353;
+            border-radius: 2px;
+        }
+        .slider-values { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 0.8rem; margin-top: -15px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <h2>Spotify Matrix MVP</h2>
+    <h2>Spotify Matrix</h2>
 
     <div class="card">
-        <h3>1. Spotify Account</h3>
+        <h3>Spotify Connection</h3>
         % if has_token:
-            <p>✅ Successfully linked to Spotify!</p>
-            <a href="/logout" class="btn btn-red">Log Out (Reset)</a>
+            <div class="status success">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                Successfully Linked
+            </div>
+            <a href="/logout" class="btn btn-red">Disconnect Account</a>
         % else:
-            <p>❌ Not linked to Spotify.</p>
-            <a href="/login" class="btn btn-green">Link Spotify Account</a>
+            <div class="status">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                Not Linked
+            </div>
+            <a href="/login" class="btn btn-green">Link to Spotify</a>
         % end
     </div>
 
     <div class="card">
-        <h3>2. Matrix Settings</h3>
+        <h3>Display Settings</h3>
         <form action="/save_settings" method="POST">
-            <label>Brightness (1 - 100)</label>
-            <input type="number" name="brightness" min="1" max="100" value="{{brightness}}">
-            <button type="submit" class="btn btn-blue">Save & Apply Settings</button>
+            <label>Brightness</label>
+            <input type="range" name="brightness" min="1" max="100" value="{{brightness}}">
+            <div class="slider-values">
+                <span>Dim</span>
+                <span>Bright</span>
+            </div>
+            <button type="submit" class="btn btn-blue">Apply Settings</button>
         </form>
     </div>
 </body>
