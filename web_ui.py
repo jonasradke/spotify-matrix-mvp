@@ -136,6 +136,11 @@ HTML_TEMPLATE = """
                 </label>
             </div>
             
+            <div class="setting-row">
+                <label>Bar Color</label>
+                <input type="color" name="progress_color" value="{{progress_color}}" style="width: 50px; height: 35px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: transparent;">
+            </div>
+            
             <label>Brightness</label>
             <input type="range" name="brightness" min="1" max="100" value="{{brightness}}">
             <div class="slider-values">
@@ -156,7 +161,11 @@ def start_web_server(app_state, sp_oauth):
     @app.route('/')
     def index():
         has_token = bool(sp_oauth.get_cached_token())
-        return template(HTML_TEMPLATE, has_token=has_token, brightness=app_state['brightness'], show_progress=app_state.get('show_progress', False))
+        return template(HTML_TEMPLATE, 
+                        has_token=has_token, 
+                        brightness=app_state['brightness'], 
+                        show_progress=app_state.get('show_progress', False),
+                        progress_color=app_state.get('progress_color', '#1ED760'))
 
     @app.route('/login')
     def login():
@@ -180,13 +189,16 @@ def start_web_server(app_state, sp_oauth):
         try:
             b = request.forms.get('brightness', type=int)
             p = request.forms.get('show_progress') == 'on'
+            c = request.forms.get('progress_color')
             if b:
                 app_state['brightness'] = b
                 app_state['show_progress'] = p
+                if c:
+                    app_state['progress_color'] = c
                 # Save settings persistently to a JSON file
                 settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
                 with open(settings_path, 'w') as f:
-                    json.dump({'brightness': b, 'show_progress': p}, f)
+                    json.dump({'brightness': b, 'show_progress': p, 'progress_color': app_state.get('progress_color', '#1ED760')}, f)
         except Exception as e:
             return f"Error saving settings: {str(e)}"
         

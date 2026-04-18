@@ -20,18 +20,20 @@ SETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')
 # Load saved settings if they exist
 loaded_brightness = 100
 loaded_progress = False
+loaded_progress_color = "#1ED760"
 try:
     with open(SETTINGS_FILE, 'r') as f:
         saved_settings = json.load(f)
         loaded_brightness = saved_settings.get('brightness', 100)
         loaded_progress = saved_settings.get('show_progress', False)
+        loaded_progress_color = saved_settings.get('progress_color', '#1ED760')
 except FileNotFoundError:
     pass
 
 # Pre-create the settings file as root so the unprivileged thread can write to it later
 if not os.path.exists(SETTINGS_FILE):
     with open(SETTINGS_FILE, 'w') as f:
-        json.dump({'brightness': loaded_brightness, 'show_progress': loaded_progress}, f)
+        json.dump({'brightness': loaded_brightness, 'show_progress': loaded_progress, 'progress_color': loaded_progress_color}, f)
 # Ensure it's writable by all users (so the dropped 'dietpi' user can edit it)
 os.chmod(SETTINGS_FILE, 0o666)
 
@@ -39,6 +41,7 @@ os.chmod(SETTINGS_FILE, 0o666)
 app_state = {
     'brightness': loaded_brightness,
     'show_progress': loaded_progress,
+    'progress_color': loaded_progress_color,
     'shutdown': False,
     'restart': False,
     'reload_spotify': False
@@ -152,7 +155,7 @@ try:
                     duration_ms = track['item'].get('duration_ms', 1) or 1
                     width = int((progress_ms / duration_ms) * 64)
                     draw = ImageDraw.Draw(display_img)
-                    draw.line((0, 63, width, 63), fill=(30, 215, 96)) # Spotify green
+                    draw.line((0, 63, width, 63), fill=app_state.get('progress_color', '#1ED760'))
                 
                 matrix.SetImage(display_img)
             else:
