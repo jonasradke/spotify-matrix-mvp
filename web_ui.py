@@ -138,7 +138,10 @@ HTML_TEMPLATE = """
             
             <div class="setting-row">
                 <label>Bar Color</label>
-                <input type="color" name="progress_color" value="{{progress_color}}" style="width: 50px; height: 35px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: transparent;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="color" name="progress_color" value="{{progress_color}}" style="width: 50px; height: 35px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: transparent;">
+                    <button type="submit" name="action" value="reset_color" style="background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); border-radius: 4px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">Reset</button>
+                </div>
             </div>
             
             <label>Brightness</label>
@@ -154,10 +157,23 @@ HTML_TEMPLATE = """
 
     <div class="card">
         <h3>System Management</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Download the latest software updates and restart the matrix.</p>
-        <form action="/system_update" method="POST">
-            <button type="submit" class="btn btn-red">Update & Restart</button>
-        </form>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Manage updates and device power.</p>
+        <div style="display: flex; gap: 10px; flex-direction: column;">
+            <form action="/check_updates" method="POST">
+                <button type="submit" class="btn btn-blue" style="margin-top: 5px;">Check For Updates</button>
+            </form>
+            <form action="/system_update" method="POST">
+                <button type="submit" class="btn btn-red" style="margin-top: 5px;">Force Update & Restart</button>
+            </form>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <form action="/system_power" method="POST" style="flex: 1;">
+                    <button type="submit" name="command" value="reboot" class="btn btn-red" style="margin-top: 0;">Reboot</button>
+                </form>
+                <form action="/system_power" method="POST" style="flex: 1;">
+                    <button type="submit" name="command" value="shutdown" class="btn btn-red" style="margin-top: 0;">Shutdown</button>
+                </form>
+            </div>
+        </div>
     </div>
 </body>
 </html>
@@ -197,12 +213,18 @@ def start_web_server(app_state, sp_oauth):
         try:
             b = request.forms.get('brightness', type=int)
             p = request.forms.get('show_progress') == 'on'
-            c = request.forms.get('progress_color')
+            
+            if request.forms.get('action') == 'reset_color':
+                c = '#1ED760'
+                app_state['progress_color'] = c
+            else:
+                c = request.forms.get('progress_color')
+                if c:
+                    app_state['progress_color'] = c
+
             if b:
                 app_state['brightness'] = b
                 app_state['show_progress'] = p
-                if c:
-                    app_state['progress_color'] = c
                 # Save settings persistently to a JSON file
                 settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
                 with open(settings_path, 'w') as f:
@@ -218,6 +240,49 @@ def start_web_server(app_state, sp_oauth):
             os.remove(".cache")
         app_state['reload_spotify'] = True
         redirect('/')
+
+    @app.route('/check_updates', method='POST')
+    def check_updates():
+        import subprocess
+        try:
+            subprocess.call(['git', 'fetch'])
+            result = subprocess.check_output(['git', 'status', '-uno']).decode('utf-8')
+            if 'behind' in result:
+                msg = "Updates are available! Use the 'Force Update & Restart' button to install."
+            elif 'up to date' in result:
+                msg = "You are already on the latest version."
+            else:
+                msg = "Checked for updates. If you still want to re-download, use 'Force Update'."
+        except Exception as e:
+            msg = f"Error checking updates: {e}"
+        
+        return f"""
+        <body style="background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px;">
+            <h2>Update Status</h2>
+            <p style="color:#b3b3b3;">{msg}</p>
+            <a href="/" style="display: inline-block; padding: 14px 24px; background-color: #1DB954; color: black; text-decoration: none; border-radius: 500px; font-weight: bold; margin-top: 20px;">Back to Settings</a>
+        </body>
+        """
+
+    @app.route('/system_power', method='POST')
+    def system_power():
+        import subprocess
+        command = request.forms.get('command')
+        if command == 'reboot':
+            subprocess.Popen(['sudo', 'reboot'])
+            msg = "Rebooting device..."
+        elif command == 'shutdown':
+            subprocess.Popen(['sudo', 'shutdown', '-h', 'now'])
+            msg = "Shutting down device... You can safely unplug the power in 15 seconds."
+        else:
+            redirect('/')
+            return
+        
+        return f"""
+        <body style="background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px;">
+            <h2>{msg}</h2>
+        </body>
+        """
 
     @app.route('/system_update', method='POST')
     def system_update():
