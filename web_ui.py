@@ -180,6 +180,20 @@ HTML_TEMPLATE = """
     </div>
 
     <div class="card">
+        <h3>Network Settings</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Connect the matrix to a new Wi-Fi network.</p>
+        <form action="/system_wifi" method="POST">
+            <label style="margin-bottom: 5px;">Wi-Fi Network Name (SSID)</label>
+            <input type="text" name="ssid" placeholder="Enter Wi-Fi Name" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
+            
+            <label style="margin-bottom: 5px;">Wi-Fi Password</label>
+            <input type="text" name="password" placeholder="Leave blank if open web" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
+            
+            <button type="submit" class="btn btn-green" style="margin-top: 0;">Save Wi-Fi & Reboot</button>
+        </form>
+    </div>
+
+    <div class="card">
         <h3>System Management</h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 5px;">Manage updates and device power.</p>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Version: <span style="color: var(--spotify-green);">{{version}}</span></p>
@@ -343,7 +357,6 @@ def start_web_server(app_state, sp_oauth):
                     json.dump({'brightness': b, 'show_progress': p, 'progress_color': app_state.get('progress_color', '#1ED760')}, f)
         except Exception as e:
             return f"Error saving settings: {str(e)}"
-        
         redirect('/')
 
     @app.route('/logout')
@@ -352,28 +365,50 @@ def start_web_server(app_state, sp_oauth):
             os.remove(".cache")
         app_state['reload_spotify'] = True
         redirect('/')
-    @app.route('/api/check_updates', method='POST')
-    def check_updates():
+
+    @app.route('/system_wifi', method='POST')
+    def system_wifi():
         import subprocess
-        try:
-            cwd_path = os.path.dirname(os.path.abspath(__file__))
-            
-            # Use git locally so it uses the Pi's saved authentication token
-            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
-            
-            # Ping GitHub securely from the Pi
-            remote_output = subprocess.check_output(['git', 'ls-remote', 'origin', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
-            
-            if not remote_output:
-                return {'status': 'unknown', 'message': 'Could not connect to GitHub.'}
-            
-            remote_hash = remote_output.split()[0]
-            if local_hash != remote_hash:
-                return {'status': 'available'}
+        ssid = request.forms.get('ssid')
+        password = request.forms.get('password')
+        
+        if ssid:
+            # WPA_Supplicant template for DietPi/Debian
+            if password:
+                wpa_block = f'\\nnetwork={{\\n    ssid="{ssid}"\\n    psk="{password}"\\n    key_mgmt=WPA-PSK\\n}}\\n'
             else:
-                return {'status': 'up_to_date'}
-        except Exception as e:
-            return {'status': 'error', 'message': str(e)}
+                wpa_block = f'\\nnetwork={{\\n    ssid="{ssid}"\\n    key_mgmt=NONE\\n}}\\n'
+            
+            try:
+                # Write to the end of wpa_supplicant.conf
+                cmd = f"echo '{wpa_block}' | sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null"
+                subprocess.check_call(cmd, shell=True)
+                
+                # We also trigger a system reboot so it connects properly
+                subprocess.Popen(['sudo', 'reboot'])
+                msg = "Wi-Fi saved successfully!<br><br>The matrix is rebooting to connect."
+            except Exception as e:
+                msg = f"Error saving Wi-Fi: {e}"
+        else:
+            msg = "Error: SSID cannot be empty."
+
+        return f"""
+        <html>
+        <head>
+            <style>
+                body {{ background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:50px; }}
+                p {{ color:#b3b3b3; line-height: 1.5; }}
+            </style>
+            <meta http-equiv="refresh" content="20;url=/" />
+        </head>
+        <body>
+            <h2>Network Configuration</h2>
+            <p>{msg}</p>
+            <p>If the connection is successful, this hotspot will disappear.<br>Please rejoin your normal Wi-Fi network.</p>
+        </body>
+        </html>
+        """
+
     @app.route('/api/check_updates', method='POST')
     def check_updates():
         import subprocess
@@ -396,7 +431,7 @@ def start_web_server(app_state, sp_oauth):
                 commits = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
                 return {'status': 'up_to_date', 'remote_version': f"v1.0.{commits}"}
         except subprocess.CalledProcessError as e:
-            return {'status': 'error', 'message': 'Git fetch failed (Authentication required). Ensure your Git remote URL contains the Personal Access Token.'}
+            return {'status': 'error', 'message': 'Git checkout failed (Authentication required). Ensure your Git remote URL contains the Personal Access Token.'}
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
 
