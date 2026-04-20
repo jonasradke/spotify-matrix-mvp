@@ -4,7 +4,7 @@ import threading
 import bottle
 import ssl
 from wsgiref.simple_server import make_server
-from bottle import request, redirect, template
+from bottle import request, redirect, template, response
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -286,6 +286,40 @@ HTML_TEMPLATE = """
 </html>
 """
 
+CAPTIVE_PORTAL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connect Device to Wi-Fi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { margin: 0; padding: 20px; font-family: -apple-system, sans-serif; background: #121212; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box;}
+        .card { background: #181818; padding: 25px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { margin-top: 0; margin-bottom: 2px; color: #1DB954; text-align: center; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #282828; color: white; box-sizing: border-box; font-size: 1rem; }
+        button { background: #1DB954; color: black; border: none; padding: 12px; border-radius: 20px; font-weight: bold; width: 100%; font-size: 1rem; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #1ed760; }
+        p.subtitle { text-align: center; font-size: 0.9rem; color: #b3b3b3; margin-bottom: 25px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Matrix Setup</h2>
+        <p class="subtitle">Provide your Wi-Fi details so the Matrix can connect to the internet.</p>
+        <form action="/system_wifi" method="POST">
+            <label style="display: block; margin-bottom: 5px; font-size: 0.9rem; color: #b3b3b3;">Wi-Fi Network Name</label>
+            <input type="text" name="ssid" placeholder="e.g. MyHomeNetwork" required>
+            
+            <label style="display: block; margin-bottom: 5px; font-size: 0.9rem; color: #b3b3b3;">Password</label>
+            <input type="password" name="password" placeholder="Leave blank if open web">
+            
+            <button type="submit">Save & Connect</button>
+        </form>
+    </div>
+</body>
+</html>
+"""
+
 def start_web_server(app_state, sp_oauth):
     app = bottle.Bottle()
 
@@ -306,8 +340,20 @@ def start_web_server(app_state, sp_oauth):
         except:
             return ""
 
+    @app.route('/generate_204')
+    @app.route('/gen_204')
+    @app.route('/hotspot-detect.html')
+    @app.route('/ncsi.txt')
+    @app.route('/link_test')
+    def captive_portal_redirects():
+        return redirect('http://10.0.0.5:8080/')
+
     @app.route('/')
     def index():
+        host_header = request.get_header('host', '')
+        if '10.0.0.5' in host_header or '192.168.50.1' in host_header:
+            return template(CAPTIVE_PORTAL_TEMPLATE)
+
         has_token = bool(sp_oauth.get_cached_token())
         return template(HTML_TEMPLATE, 
                         has_token=has_token, 
