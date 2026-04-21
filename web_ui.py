@@ -28,19 +28,30 @@ HTML_TEMPLATE = """
             background-color: var(--bg-color);
             color: var(--text-color);
             padding: 20px; 
-            max-width: 500px; 
+            max-width: 900px; 
             margin: auto; 
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
         h2 { text-align: center; margin-bottom: 30px; font-weight: 700; letter-spacing: -0.04em; }
         h3 { margin-top: 0; font-size: 1.2rem; font-weight: 600; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+        @media (min-width: 768px) {
+            .grid-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
         .card { 
             background-color: var(--card-bg); 
             padding: 24px; 
             border-radius: 12px; 
-            margin-bottom: 24px; 
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
         }
         .status { margin: 15px 0; font-size: 1rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
         .status.success { color: var(--spotify-green); }
@@ -132,9 +143,10 @@ HTML_TEMPLATE = """
 <body>
     <h2>Spotify Matrix</h2>
 
-    <div class="card">
-        <h3>Spotify Connection</h3>
-        % if has_token:
+    <div class="grid-container">
+        <div class="card">
+            <h3>Spotify Connection</h3>
+            % if has_token:
             <div class="status success">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                 Successfully Linked
@@ -210,6 +222,7 @@ HTML_TEMPLATE = """
                 </form>
             </div>
         </div>
+    </div>
     </div>
     
     <!-- Custom Modal UI -->
