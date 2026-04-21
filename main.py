@@ -44,12 +44,16 @@ app_state = {
     'progress_color': loaded_progress_color,
     'shutdown': False,
     'restart': False,
-    'reload_spotify': False
+    'reload_spotify': False,
+    'track_name': None,
+    'artist_name': None,
+    'album_art': None,
+    'is_playing': False
 }
 
 # Spotipy OAuth configuration
 sp_oauth = SpotifyOAuth(
-    scope='user-read-currently-playing user-read-playback-state',
+    scope='user-read-currently-playing user-read-playback-state user-modify-playback-state',
     open_browser=False,
     redirect_uri="https://matrix.local/callback" # Change matrix IP if mDNS isn't working
 )
@@ -133,8 +137,17 @@ try:
             track = sp.current_playback()
 
             # Check if music is playing
-            if track and track.get('is_playing'):
-                url = track['item']['album']['images'][-1]['url']
+            if track and track.get('is_playing') and track.get('item'):
+                app_state['is_playing'] = True
+                app_state['track_name'] = track['item']['name']
+                app_state['artist_name'] = track['item']['artists'][0]['name'] if track['item']['artists'] else 'Unknown'
+                
+                images = track['item']['album']['images']
+                if not images:
+                    continue
+                
+                url = images[-1]['url']  # 64x64 smallest image for matrix
+                app_state['album_art'] = images[0]['url']  # 640x640 largest image for Web UI
 
                 # Only redraw if the song changed
                 if url != last_url:
@@ -159,6 +172,11 @@ try:
                 
                 matrix.SetImage(display_img)
             else:
+                app_state['is_playing'] = False
+                app_state['track_name'] = None
+                app_state['artist_name'] = None
+                app_state['album_art'] = None
+                
                 # Clear matrix if paused/stopped
                 if last_url:
                     matrix.Clear()

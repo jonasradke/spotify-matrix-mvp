@@ -138,6 +138,20 @@ HTML_TEMPLATE = """
         .modal-overlay.active .modal { transform: translateY(0); }
         .modal-actions { display: flex; gap: 10px; margin-top: 25px; }
         .modal-actions .btn { margin-top: 0; flex: 1; }
+        
+        .now-playing { display: flex; align-items: center; gap: 15px; margin-top: 15px; }
+        .now-playing img { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,0.5); background-color: #282828; }
+        .now-playing-info { flex: 1; overflow: hidden; }
+        .now-playing-title { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+        .now-playing-artist { color: var(--text-secondary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; }
+        .control-btn { background: transparent; border: none; color: white; cursor: pointer; transition: transform 0.2s, color 0.2s; padding: 10px; border-radius: 50%; outline: none; }
+        .control-btn:hover { transform: scale(1.1); color: var(--spotify-green); background: rgba(255,255,255,0.1); }
+        .control-btn:active { transform: scale(0.95); }
+        .control-btn svg { width: 28px; height: 28px; display: block; fill: currentColor; }
+        .play-btn svg { width: 36px; height: 36px; }
+        
+        #unlinked-msg { display: none; margin-top: 15px; color: var(--text-secondary); font-size: 0.9rem; text-align: center; }
     </style>
 </head>
 <body>
@@ -147,11 +161,30 @@ HTML_TEMPLATE = """
         <div class="card">
             <h3>Spotify Connection</h3>
             % if has_token:
-            <div class="status success">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                Successfully Linked
+            <div id="now-playing-container">
+                <div class="now-playing">
+                    <img id="np-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Album Art">
+                    <div class="now-playing-info">
+                        <div id="np-title" class="now-playing-title">Loading...</div>
+                        <div id="np-artist" class="now-playing-artist">Waiting for Spotify</div>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" onclick="playbackCommand('previous')">
+                        <svg viewBox="0 0 24 24"><path d="M16 4v16L6 12zM6 4v16h2V4z"/></svg>
+                    </button>
+                    <button id="np-playpause" class="control-btn play-btn" onclick="playbackCommand('play_pause')">
+                        <!-- Play Icon Default -->
+                        <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        <!-- Pause Icon Hidden -->
+                        <svg id="icon-pause" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                    <button class="control-btn" onclick="playbackCommand('next')">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7zM20 5v14h-2V5z"/></svg>
+                    </button>
+                </div>
+                <a href="/logout" class="btn btn-red" style="margin-top: 25px;">Disconnect Account</a>
             </div>
-            <a href="/logout" class="btn btn-red">Disconnect Account</a>
         % else:
             <div class="status">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
@@ -255,6 +288,54 @@ HTML_TEMPLATE = """
     };
 
     var localHash = "{{local_hash}}";
+    var hasToken = {{ 'true' if has_token else 'false' }};
+
+    if (hasToken) {
+        setInterval(fetchNowPlaying, 2000);
+        fetchNowPlaying();
+    }
+
+    function fetchNowPlaying() {
+        fetch('/api/now_playing')
+        .then(res => res.json())
+        .then(data => {
+            if (data.is_playing) {
+                document.getElementById('np-title').innerText = data.track_name;
+                document.getElementById('np-artist').innerText = data.artist_name;
+                if (data.album_art) document.getElementById('np-img').src = data.album_art;
+                
+                document.getElementById('icon-play').style.display = 'none';
+                document.getElementById('icon-pause').style.display = 'inline-block';
+            } else {
+                document.getElementById('np-title').innerText = "Paused";
+                document.getElementById('np-artist').innerText = "Matrix is waiting for music...";
+                document.getElementById('icon-play').style.display = 'inline-block';
+                document.getElementById('icon-pause').style.display = 'none';
+            }
+        })
+        .catch(err => console.log('Error fetching now playing', err));
+    }
+
+    function playbackCommand(cmd) {
+        var btn = document.getElementById('np-playpause');
+        btn.style.opacity = '0.5';
+        
+        fetch('/api/playback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'command=' + cmd
+        })
+        .then(() => {
+            setTimeout(() => {
+                btn.style.opacity = '1';
+                fetchNowPlaying();
+            }, 500);
+        })
+        .catch(err => {
+            btn.style.opacity = '1';
+            console.error('Command issue', err);
+        });
+    }
 
     function checkUpdates() {
         var btn = document.getElementById('checkUpdateBtn');
@@ -480,6 +561,43 @@ def start_web_server(app_state, sp_oauth):
         </body>
         </html>
         """
+
+    @app.route('/api/now_playing', method='GET')
+    def api_now_playing():
+        return {
+            'is_playing': app_state.get('is_playing', False),
+            'track_name': app_state.get('track_name', ''),
+            'artist_name': app_state.get('artist_name', ''),
+            'album_art': app_state.get('album_art', '')
+        }
+
+    @app.route('/api/playback', method='POST')
+    def api_playback():
+        command = request.forms.get('command')
+        if not sp_oauth.get_cached_token():
+            return {'status': 'error', 'message': 'Not logged in'}
+        
+        try:
+            from spotipy import Spotify
+            sp = Spotify(auth_manager=sp_oauth)
+            
+            if command == 'play_pause':
+                # We need to know current state to toggle
+                if app_state.get('is_playing'):
+                    sp.pause_playback()
+                    app_state['is_playing'] = False
+                else:
+                    sp.start_playback()
+                    app_state['is_playing'] = True
+            elif command == 'next':
+                sp.next_track()
+            elif command == 'previous':
+                sp.previous_track()
+                
+            return {'status': 'success'}
+        except Exception as e:
+            print("Spotify API Error during playback control:", str(e))
+            return {'status': 'error', 'message': str(e)}
 
     def run_web_server():
         cert_dir = os.path.dirname(os.path.abspath(__file__))
