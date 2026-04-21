@@ -249,14 +249,20 @@ HTML_TEMPLATE = """
         btn.innerHTML = 'Checking... <div class="spinner"></div>';
         btn.disabled = true;
         
-        // Let the Pi do the heavy lifting safely through its own GitHub authentication token
-        fetch('/api/check_updates', { method: 'POST' })
-        .then(res => res.json())
+        // Fast client-side check directly against GitHub API
+        fetch('https://api.github.com/repos/jonasradke/spotify-matrix-mvp/commits/main')
+        .then(res => {
+            if (!res.ok) throw new Error('Failed to fetch from GitHub');
+            return res.json();
+        })
         .then(data => {
             btn.innerHTML = originalText;
             btn.disabled = false;
             
-            if (data.status === 'available') {
+            var remoteHash = data.sha;
+            if (!localHash || localHash === "") {
+                showModal("Update Error", "Could not check version. Unknown local state.", false, null);
+            } else if (remoteHash && !remoteHash.startsWith(localHash)) {
                 showModal("Update Available", "Updates are available! Do you want to install them now and restart the matrix?", true, function() {
                     btn.innerHTML = 'Updating & Restarting... <div class="spinner"></div>';
                     btn.disabled = true;
@@ -264,21 +270,19 @@ HTML_TEMPLATE = """
                     btn.classList.add('btn-green');
                     document.getElementById('updateForm').submit();
                 });
-            } else if (data.status === 'up_to_date') {
+            } else {
                 btn.innerHTML = 'Up to Date ✓';
                 btn.disabled = true;
                 setTimeout(() => { 
                     btn.innerHTML = originalText; 
                     btn.disabled = false; 
                 }, 3000);
-            } else {
-                showModal("Update Error", "Could not verify update status. Check internet.", false, null);
             }
         })
         .catch(err => {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            showModal("Network Error", "Network error while checking for updates.", false, null);
+            showModal("Network Error", "Could not reach GitHub to check for updates.", false, null);
         });
     }
     </script>
@@ -407,32 +411,6 @@ def start_web_server(app_state, sp_oauth):
         </body>
         </html>
         """
-
-    @app.route('/api/check_updates', method='POST')
-    def check_updates():
-        import subprocess
-        try:
-            env = os.environ.copy()
-            env['GIT_TERMINAL_PROMPT'] = '0'
-            cwd_path = os.path.dirname(os.path.abspath(__file__))
-            
-            # Super fast checking: query remote github hash directly without downloading files
-            local_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
-            remote_output = subprocess.check_output(['git', 'ls-remote', 'origin', 'HEAD'], env=env, cwd=cwd_path).decode('utf-8').strip()
-            
-            if not remote_output:
-                return {'status': 'unknown', 'message': 'Could not connect to GitHub.'}
-            
-            remote_hash = remote_output.split()[0]
-            if local_hash != remote_hash:
-                return {'status': 'available', 'remote_version': f"New Update"}
-            else:
-                commits = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
-                return {'status': 'up_to_date', 'remote_version': f"v1.0.{commits}"}
-        except subprocess.CalledProcessError as e:
-            return {'status': 'error', 'message': 'Git checkout failed (Authentication required). Ensure your Git remote URL contains the Personal Access Token.'}
-        except Exception as e:
-            return {'status': 'error', 'message': str(e)}
 
     @app.route('/system_power', method='POST')
     def system_power():
