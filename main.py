@@ -21,19 +21,32 @@ SETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')
 loaded_brightness = 100
 loaded_progress = False
 loaded_progress_color = "#1ED760"
+loaded_idle_mode = "clock"
+loaded_idle_block_start = "00:00"
+loaded_idle_block_end = "00:00"
 try:
     with open(SETTINGS_FILE, 'r') as f:
         saved_settings = json.load(f)
         loaded_brightness = saved_settings.get('brightness', 100)
         loaded_progress = saved_settings.get('show_progress', False)
         loaded_progress_color = saved_settings.get('progress_color', '#1ED760')
+        loaded_idle_mode = saved_settings.get('idle_mode', 'clock')
+        loaded_idle_block_start = saved_settings.get('idle_block_start', '00:00')
+        loaded_idle_block_end = saved_settings.get('idle_block_end', '00:00')
 except FileNotFoundError:
     pass
 
 # Pre-create the settings file as root so the unprivileged thread can write to it later
 if not os.path.exists(SETTINGS_FILE):
     with open(SETTINGS_FILE, 'w') as f:
-        json.dump({'brightness': loaded_brightness, 'show_progress': loaded_progress, 'progress_color': loaded_progress_color}, f)
+        json.dump({
+            'brightness': loaded_brightness,
+            'show_progress': loaded_progress,
+            'progress_color': loaded_progress_color,
+            'idle_mode': loaded_idle_mode,
+            'idle_block_start': loaded_idle_block_start,
+            'idle_block_end': loaded_idle_block_end
+        }, f)
 # Ensure it's writable by all users (so the dropped 'dietpi' user can edit it)
 os.chmod(SETTINGS_FILE, 0o666)
 
@@ -50,8 +63,57 @@ app_state = {
     'album_art': None,
     'is_playing': False,
     'progress_ms': 0,
-    'duration_ms': 0
+    'duration_ms': 0,
+    'idle_mode': loaded_idle_mode,
+    'idle_block_start': loaded_idle_block_start,
+    'idle_block_end': loaded_idle_block_end
 }
+
+
+def parse_hhmm_to_minutes(value, fallback):
+    try:
+        hour, minute = value.split(':')
+        return int(hour) * 60 + int(minute)
+    except Exception:
+        return fallback
+
+
+def idle_is_blocked_now(state):
+    start = parse_hhmm_to_minutes(state.get('idle_block_start', '00:00'), 0)
+    end = parse_hhmm_to_minutes(state.get('idle_block_end', '00:00'), 0)
+    if start == end:
+        return False
+
+    now_tm = time.localtime()
+    now_minutes = now_tm.tm_hour * 60 + now_tm.tm_min
+
+    if start < end:
+        return start <= now_minutes < end
+
+    return now_minutes >= start or now_minutes < end
+
+
+def render_idle_image(state):
+    mode = state.get('idle_mode', 'clock')
+    img = Image.new('RGB', (64, 64), (0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    if mode == 'off':
+        return img
+
+    if mode == 'clock':
+        draw.text((9, 26), time.strftime('%H:%M'), fill=(29, 185, 84))
+        return img
+
+    if mode == 'clock_date':
+        draw.text((9, 20), time.strftime('%H:%M'), fill=(29, 185, 84))
+        draw.text((9, 36), time.strftime('%d.%m'), fill=(180, 180, 180))
+        return img
+
+    # idle_mode == 'matrix_logo'
+    draw.rectangle((7, 20, 56, 44), outline=(29, 185, 84))
+    draw.text((13, 28), 'MATRIX', fill=(29, 185, 84))
+    return img
 
 # Spotipy OAuth configuration
 sp_oauth = SpotifyOAuth(
@@ -100,6 +162,7 @@ except Exception as e:
 # 3. Main Loop
 last_url = None
 last_img = None
+idle_active = False
 print('Spotify MVP Running... Connect to https://<pi-ip> to configure.')
 
 try:
@@ -175,6 +238,7 @@ try:
                     draw.line((0, 63, width, 63), fill=app_state.get('progress_color', '#1ED760'))
                 
                 matrix.SetImage(display_img)
+                idle_active = False
             else:
                 app_state['is_playing'] = False
                 app_state['track_name'] = None
@@ -182,10 +246,16 @@ try:
                 app_state['album_art'] = None
                 app_state['progress_ms'] = 0
                 app_state['duration_ms'] = 0
+
+                show_idle = app_state.get('idle_mode', 'clock') != 'off' and not idle_is_blocked_now(app_state)
+                if show_idle:
+                    matrix.SetImage(render_idle_image(app_state))
+                    idle_active = True
                 
-                # Clear matrix if paused/stopped
-                if last_url:
+                # Clear matrix if paused/stopped with idle disabled in this time window
+                if not show_idle and (last_url or idle_active):
                     matrix.Clear()
+                    idle_active = False
                     last_url = None
                     last_img = None
         except Exception as e:

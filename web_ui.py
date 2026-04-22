@@ -229,6 +229,22 @@ HTML_TEMPLATE = """
                 <span>Dim</span>
                 <span>Bright</span>
             </div>
+
+            <label>Idle Screen Mode</label>
+            <select name="idle_mode" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
+                <option value="off" {{'selected' if idle_mode == 'off' else ''}}>Off (black screen)</option>
+                <option value="clock" {{'selected' if idle_mode == 'clock' else ''}}>Clock</option>
+                <option value="clock_date" {{'selected' if idle_mode == 'clock_date' else ''}}>Clock + Date</option>
+                <option value="matrix_logo" {{'selected' if idle_mode == 'matrix_logo' else ''}}>Matrix Logo</option>
+            </select>
+
+            <label>Hide Idle Screen Between</label>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                <input type="time" name="idle_block_start" value="{{idle_block_start}}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box;">
+                <span style="color: var(--text-secondary);">to</span>
+                <input type="time" name="idle_block_end" value="{{idle_block_end}}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box;">
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -8px; margin-bottom: 14px;">Set both times equal to disable this schedule.</p>
             
             <button type="submit" class="btn btn-blue">Apply Settings</button>
         </form>
@@ -465,6 +481,9 @@ def start_web_server(app_state, sp_oauth):
                         brightness=app_state['brightness'], 
                         show_progress=app_state.get('show_progress', False),
                         progress_color=app_state.get('progress_color', '#1ED760'),
+                        idle_mode=app_state.get('idle_mode', 'clock'),
+                        idle_block_start=app_state.get('idle_block_start', '00:00'),
+                        idle_block_end=app_state.get('idle_block_end', '00:00'),
                         version=get_current_version(),
                         local_hash=get_current_hash())
 
@@ -490,6 +509,11 @@ def start_web_server(app_state, sp_oauth):
         try:
             b = request.forms.get('brightness', type=int)
             p = request.forms.get('show_progress') == 'on'
+            idle_mode = request.forms.get('idle_mode') or app_state.get('idle_mode', 'clock')
+            if idle_mode not in ('off', 'clock', 'clock_date', 'matrix_logo'):
+                idle_mode = 'clock'
+            idle_block_start = request.forms.get('idle_block_start') or app_state.get('idle_block_start', '00:00')
+            idle_block_end = request.forms.get('idle_block_end') or app_state.get('idle_block_end', '00:00')
             
             if request.forms.get('action') == 'reset_color':
                 c = '#1ED760'
@@ -499,13 +523,26 @@ def start_web_server(app_state, sp_oauth):
                 if c:
                     app_state['progress_color'] = c
 
-            if b:
-                app_state['brightness'] = b
-                app_state['show_progress'] = p
-                # Save settings persistently to a JSON file
-                settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
-                with open(settings_path, 'w') as f:
-                    json.dump({'brightness': b, 'show_progress': p, 'progress_color': app_state.get('progress_color', '#1ED760')}, f)
+            if b is None:
+                b = app_state.get('brightness', 100)
+
+            app_state['brightness'] = b
+            app_state['show_progress'] = p
+            app_state['idle_mode'] = idle_mode
+            app_state['idle_block_start'] = idle_block_start
+            app_state['idle_block_end'] = idle_block_end
+
+            # Save settings persistently to a JSON file
+            settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
+            with open(settings_path, 'w') as f:
+                json.dump({
+                    'brightness': b,
+                    'show_progress': p,
+                    'progress_color': app_state.get('progress_color', '#1ED760'),
+                    'idle_mode': idle_mode,
+                    'idle_block_start': idle_block_start,
+                    'idle_block_end': idle_block_end
+                }, f)
         except Exception as e:
             return f"Error saving settings: {str(e)}"
         redirect('/')
