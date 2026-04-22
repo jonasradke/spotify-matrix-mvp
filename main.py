@@ -76,14 +76,14 @@ opts = RGBMatrixOptions()
 opts.rows = 64
 opts.cols = 64
 opts.hardware_mapping = 'adafruit-hat-pwm'
-opts.pwm_bits = 8
+opts.pwm_bits = 11
 opts.brightness = app_state['brightness']
-opts.gpio_slowdown = 0
+opts.gpio_slowdown = 1
 opts.drop_privileges = True
 opts.drop_priv_user = 'dietpi'
 opts.drop_priv_group = 'dietpi'
-opts.show_refresh_rate = 1
-opts.limit_refresh_rate_hz = 180
+opts.show_refresh_rate = 0
+opts.limit_refresh_rate_hz = 165
 opts.pwm_lsb_nanoseconds =75
 
 matrix = RGBMatrix(options=opts)
