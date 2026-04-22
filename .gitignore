@@ -11,3 +11,9 @@ __pycache__/
 
 # Ignore compiled python files
 *.pyc
+
+# Local runtime artifacts
+cert.pem
+key.pem
+settings.json
+rpi-rgb-led-matrix/
