@@ -424,19 +424,36 @@ def start_web_server(app_state, sp_oauth):
         return spotify_client['instance']
 
     def get_current_version():
-        import subprocess
         try:
-            cwd_path = os.path.dirname(os.path.abspath(__file__))
-            commits = subprocess.check_output(['git', 'rev-list', '--count', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
-            return f"v1.0.{commits}"
+            git_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.git')
+            head_path = os.path.join(git_dir, 'HEAD')
+            with open(head_path, 'r') as f:
+                head_content = f.read().strip()
+
+            if head_content.startswith('ref: '):
+                ref_path = os.path.join(git_dir, head_content[5:])
+                with open(ref_path, 'r') as ref_file:
+                    commit_hash = ref_file.read().strip()
+            else:
+                commit_hash = head_content
+
+            return f"v1.0.{commit_hash[:7]}"
         except:
             return "Unknown Version"
 
     def get_current_hash():
-        import subprocess
         try:
-            cwd_path = os.path.dirname(os.path.abspath(__file__))
-            return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=cwd_path).decode('utf-8').strip()
+            git_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.git')
+            head_path = os.path.join(git_dir, 'HEAD')
+            with open(head_path, 'r') as f:
+                head_content = f.read().strip()
+
+            if head_content.startswith('ref: '):
+                ref_path = os.path.join(git_dir, head_content[5:])
+                with open(ref_path, 'r') as ref_file:
+                    return ref_file.read().strip()
+
+            return head_content
         except:
             return ""
 
@@ -669,6 +686,28 @@ def start_web_server(app_state, sp_oauth):
         
         srv.serve_forever()
 
+    def run_http_redirect_server():
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+
+        class RedirectHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                target = 'https://matrix.local' + self.path
+                self.send_response(301)
+                self.send_header('Location', target)
+                self.end_headers()
+
+            def do_POST(self):
+                self.do_GET()
+
+            def log_message(self, format, *args):
+                return
+
+        HTTPServer(('0.0.0.0', 80), RedirectHandler).serve_forever()
+
     # Start HTTPS web interface in the background
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
+
+    # Redirect plain HTTP to HTTPS so browsers never get a connection refused on port 80
+    http_thread = threading.Thread(target=run_http_redirect_server, daemon=True)
+    http_thread.start()
