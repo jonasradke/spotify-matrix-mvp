@@ -48,7 +48,9 @@ app_state = {
     'track_name': None,
     'artist_name': None,
     'album_art': None,
-    'is_playing': False
+    'is_playing': False,
+    'progress_ms': 0,
+    'duration_ms': 0
 }
 
 # Spotipy OAuth configuration
@@ -141,6 +143,8 @@ try:
                 app_state['is_playing'] = True
                 app_state['track_name'] = track['item']['name']
                 app_state['artist_name'] = track['item']['artists'][0]['name'] if track['item']['artists'] else 'Unknown'
+                app_state['progress_ms'] = track.get('progress_ms', 0) or 0
+                app_state['duration_ms'] = track['item'].get('duration_ms', 0) or 0
                 
                 images = track['item']['album']['images']
                 if not images:
@@ -176,6 +180,8 @@ try:
                 app_state['track_name'] = None
                 app_state['artist_name'] = None
                 app_state['album_art'] = None
+                app_state['progress_ms'] = 0
+                app_state['duration_ms'] = 0
                 
                 # Clear matrix if paused/stopped
                 if last_url:

@@ -144,6 +144,10 @@ HTML_TEMPLATE = """
         .now-playing-info { flex: 1; overflow: hidden; }
         .now-playing-title { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
         .now-playing-artist { color: var(--text-secondary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .np-progress-wrap { margin-top: 12px; }
+        .np-progress-track { height: 6px; background: #3a3a3a; border-radius: 999px; overflow: hidden; }
+        .np-progress-fill { height: 100%; width: 0%; background: var(--spotify-green); transition: width 0.2s linear; }
+        .np-progress-time { margin-top: 6px; color: var(--text-secondary); font-size: 0.78rem; text-align: right; }
         .controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 20px; }
         .control-btn { background: transparent; border: none; color: white; cursor: pointer; transition: transform 0.2s, color 0.2s; padding: 10px; border-radius: 50%; outline: none; }
         .control-btn:hover { transform: scale(1.1); color: var(--spotify-green); background: rgba(255,255,255,0.1); }
@@ -168,6 +172,12 @@ HTML_TEMPLATE = """
                         <div id="np-title" class="now-playing-title">Loading...</div>
                         <div id="np-artist" class="now-playing-artist">Waiting for Spotify</div>
                     </div>
+                </div>
+                <div class="np-progress-wrap">
+                    <div class="np-progress-track">
+                        <div id="np-progress-fill" class="np-progress-fill"></div>
+                    </div>
+                    <div id="np-progress-time" class="np-progress-time">0:00 / 0:00</div>
                 </div>
                 <div class="controls">
                     <button class="control-btn" onclick="playbackCommand('previous')">
@@ -291,8 +301,15 @@ HTML_TEMPLATE = """
     var hasToken = {{ 'true' if has_token else 'false' }};
 
     if (hasToken) {
-        setInterval(fetchNowPlaying, 2000);
+        setInterval(fetchNowPlaying, 1000);
         fetchNowPlaying();
+    }
+
+    function formatMs(ms) {
+        var totalSec = Math.max(0, Math.floor((ms || 0) / 1000));
+        var min = Math.floor(totalSec / 60);
+        var sec = totalSec % 60;
+        return min + ':' + (sec < 10 ? '0' + sec : sec);
     }
 
     function fetchNowPlaying() {
@@ -306,11 +323,19 @@ HTML_TEMPLATE = """
                 
                 document.getElementById('icon-play').style.display = 'none';
                 document.getElementById('icon-pause').style.display = 'inline-block';
+
+                var duration = data.duration_ms || 0;
+                var progress = data.progress_ms || 0;
+                var pct = duration > 0 ? Math.min(100, (progress / duration) * 100) : 0;
+                document.getElementById('np-progress-fill').style.width = pct + '%';
+                document.getElementById('np-progress-time').innerText = formatMs(progress) + ' / ' + formatMs(duration);
             } else {
                 document.getElementById('np-title').innerText = "Paused";
                 document.getElementById('np-artist').innerText = "Matrix is waiting for music...";
                 document.getElementById('icon-play').style.display = 'inline-block';
                 document.getElementById('icon-pause').style.display = 'none';
+                document.getElementById('np-progress-fill').style.width = '0%';
+                document.getElementById('np-progress-time').innerText = '0:00 / 0:00';
             }
         })
         .catch(err => console.log('Error fetching now playing', err));
@@ -319,6 +344,12 @@ HTML_TEMPLATE = """
     function playbackCommand(cmd) {
         var btn = document.getElementById('np-playpause');
         btn.style.opacity = '0.5';
+
+        if (cmd === 'play_pause') {
+            var playVisible = document.getElementById('icon-play').style.display !== 'none';
+            document.getElementById('icon-play').style.display = playVisible ? 'none' : 'inline-block';
+            document.getElementById('icon-pause').style.display = playVisible ? 'inline-block' : 'none';
+        }
         
         fetch('/api/playback', {
             method: 'POST',
@@ -326,10 +357,8 @@ HTML_TEMPLATE = """
             body: 'command=' + cmd
         })
         .then(() => {
-            setTimeout(() => {
-                btn.style.opacity = '1';
-                fetchNowPlaying();
-            }, 500);
+            btn.style.opacity = '1';
+            setTimeout(fetchNowPlaying, 150);
         })
         .catch(err => {
             btn.style.opacity = '1';
@@ -386,6 +415,13 @@ HTML_TEMPLATE = """
 
 def start_web_server(app_state, sp_oauth):
     app = bottle.Bottle()
+    spotify_client = {'instance': None}
+
+    def get_spotify_client():
+        from spotipy import Spotify
+        if spotify_client['instance'] is None:
+            spotify_client['instance'] = Spotify(auth_manager=sp_oauth)
+        return spotify_client['instance']
 
     def get_current_version():
         import subprocess
@@ -568,7 +604,9 @@ def start_web_server(app_state, sp_oauth):
             'is_playing': app_state.get('is_playing', False),
             'track_name': app_state.get('track_name', ''),
             'artist_name': app_state.get('artist_name', ''),
-            'album_art': app_state.get('album_art', '')
+            'album_art': app_state.get('album_art', ''),
+            'progress_ms': app_state.get('progress_ms', 0),
+            'duration_ms': app_state.get('duration_ms', 0)
         }
 
     @app.route('/api/playback', method='POST')
@@ -578,12 +616,11 @@ def start_web_server(app_state, sp_oauth):
             return {'status': 'error', 'message': 'Not logged in'}
         
         try:
-            from spotipy import Spotify
-            sp = Spotify(auth_manager=sp_oauth)
+            sp = get_spotify_client()
             
             if command == 'play_pause':
-                # We need to know current state to toggle
-                if app_state.get('is_playing'):
+                playback = sp.current_playback()
+                if playback and playback.get('is_playing'):
                     sp.pause_playback()
                     app_state['is_playing'] = False
                 else:
