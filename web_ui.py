@@ -587,10 +587,54 @@ def start_web_server(app_state, sp_oauth):
             env = os.environ.copy()
             env['GIT_TERMINAL_PROMPT'] = '0'
             cwd_path = os.path.dirname(os.path.abspath(__file__))
-            
-            subprocess.check_call(['git', 'pull'], env=env, cwd=cwd_path)
+
+            result = subprocess.run(
+                ['git', 'pull'],
+                env=env,
+                cwd=cwd_path,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                error_output = (result.stderr or result.stdout or 'Unknown error').strip()
+                error_output = error_output[-1200:]
+                return f"""
+                <html>
+                <head>
+                    <style>
+                        body {{ background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:40px; }}
+                        p {{ color:#b3b3b3; line-height: 1.5; }}
+                        pre {{ text-align: left; margin: 20px auto 0 auto; max-width: 720px; white-space: pre-wrap; word-break: break-word; background:#181818; border:1px solid #333; border-radius:8px; padding:12px; color:#ff8080; }}
+                        a {{ color:#1DB954; }}
+                    </style>
+                </head>
+                <body>
+                    <h2>Update Failed</h2>
+                    <p>The matrix could not pull the latest update. Please resolve the Git issue and try again.</p>
+                    <pre>{error_output}</pre>
+                    <p><a href=\"/\">Back to Settings</a></p>
+                </body>
+                </html>
+                """
         except Exception as e:
             print(f"Error pulling updates: {e}")
+            return f"""
+            <html>
+            <head>
+                <style>
+                    body {{ background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:40px; }}
+                    p {{ color:#b3b3b3; line-height: 1.5; }}
+                    a {{ color:#1DB954; }}
+                </style>
+            </head>
+            <body>
+                <h2>Update Failed</h2>
+                <p>An unexpected error occurred while checking for updates.</p>
+                <p>{str(e)}</p>
+                <p><a href=\"/\">Back to Settings</a></p>
+            </body>
+            </html>
+            """
         
         # Trigger graceful systemd restart in main.py
         app_state['restart'] = True
