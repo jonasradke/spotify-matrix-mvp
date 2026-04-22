@@ -4,7 +4,7 @@ import requests
 import sys
 import json
 from io import BytesIO
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
@@ -22,6 +22,7 @@ loaded_brightness = 100
 loaded_progress = False
 loaded_progress_color = "#1ED760"
 loaded_idle_mode = "clock"
+loaded_idle_color = "#1ED760"
 loaded_idle_block_start = "00:00"
 loaded_idle_block_end = "00:00"
 try:
@@ -31,6 +32,7 @@ try:
         loaded_progress = saved_settings.get('show_progress', False)
         loaded_progress_color = saved_settings.get('progress_color', '#1ED760')
         loaded_idle_mode = saved_settings.get('idle_mode', 'clock')
+        loaded_idle_color = saved_settings.get('idle_color', '#1ED760')
         loaded_idle_block_start = saved_settings.get('idle_block_start', '00:00')
         loaded_idle_block_end = saved_settings.get('idle_block_end', '00:00')
 except FileNotFoundError:
@@ -44,6 +46,7 @@ if not os.path.exists(SETTINGS_FILE):
             'show_progress': loaded_progress,
             'progress_color': loaded_progress_color,
             'idle_mode': loaded_idle_mode,
+            'idle_color': loaded_idle_color,
             'idle_block_start': loaded_idle_block_start,
             'idle_block_end': loaded_idle_block_end
         }, f)
@@ -65,6 +68,7 @@ app_state = {
     'progress_ms': 0,
     'duration_ms': 0,
     'idle_mode': loaded_idle_mode,
+    'idle_color': loaded_idle_color,
     'idle_block_start': loaded_idle_block_start,
     'idle_block_end': loaded_idle_block_end
 }
@@ -98,21 +102,54 @@ def render_idle_image(state):
     img = Image.new('RGB', (64, 64), (0, 0, 0))
     draw = ImageDraw.Draw(img)
 
+    def hex_to_rgb(value):
+        try:
+            value = value.lstrip('#')
+            if len(value) != 6:
+                return (29, 185, 84)
+            return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+        except Exception:
+            return (29, 185, 84)
+
+    def load_font(size):
+        font_paths = [
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+        ]
+        for path in font_paths:
+            try:
+                return ImageFont.truetype(path, size)
+            except Exception:
+                pass
+        return ImageFont.load_default()
+
+    def draw_centered_text(text, y, font, fill):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        x = max(0, (64 - text_width) // 2)
+        draw.text((x, y), text, fill=fill, font=font)
+
+    idle_rgb = hex_to_rgb(state.get('idle_color', '#1ED760'))
+    idle_secondary = tuple(max(40, int(c * 0.65)) for c in idle_rgb)
+
     if mode == 'off':
         return img
 
     if mode == 'clock':
-        draw.text((9, 26), time.strftime('%H:%M'), fill=(29, 185, 84))
+        clock_font = load_font(16)
+        draw_centered_text(time.strftime('%H:%M'), 24, clock_font, idle_rgb)
         return img
 
     if mode == 'clock_date':
-        draw.text((9, 20), time.strftime('%H:%M'), fill=(29, 185, 84))
-        draw.text((9, 36), time.strftime('%d.%m'), fill=(180, 180, 180))
+        clock_font = load_font(15)
+        date_font = load_font(10)
+        draw_centered_text(time.strftime('%H:%M'), 17, clock_font, idle_rgb)
+        draw_centered_text(time.strftime('%d.%m'), 37, date_font, idle_secondary)
         return img
 
-    # idle_mode == 'matrix_logo'
-    draw.rectangle((7, 20, 56, 44), outline=(29, 185, 84))
-    draw.text((13, 28), 'MATRIX', fill=(29, 185, 84))
+    # Fallback to clock for unknown mode values
+    clock_font = load_font(16)
+    draw_centered_text(time.strftime('%H:%M'), 24, clock_font, idle_rgb)
     return img
 
 # Spotipy OAuth configuration

@@ -235,8 +235,10 @@ HTML_TEMPLATE = """
                 <option value="off" {{'selected' if idle_mode == 'off' else ''}}>Off (black screen)</option>
                 <option value="clock" {{'selected' if idle_mode == 'clock' else ''}}>Clock</option>
                 <option value="clock_date" {{'selected' if idle_mode == 'clock_date' else ''}}>Clock + Date</option>
-                <option value="matrix_logo" {{'selected' if idle_mode == 'matrix_logo' else ''}}>Matrix Logo</option>
             </select>
+
+            <label>Idle Text Color</label>
+            <input type="color" name="idle_color" value="{{idle_color}}" style="width: 100%; height: 42px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; box-sizing: border-box;">
 
             <label>Hide Idle Screen Between</label>
             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
@@ -482,6 +484,7 @@ def start_web_server(app_state, sp_oauth):
                         show_progress=app_state.get('show_progress', False),
                         progress_color=app_state.get('progress_color', '#1ED760'),
                         idle_mode=app_state.get('idle_mode', 'clock'),
+                        idle_color=app_state.get('idle_color', '#1ED760'),
                         idle_block_start=app_state.get('idle_block_start', '00:00'),
                         idle_block_end=app_state.get('idle_block_end', '00:00'),
                         version=get_current_version(),
@@ -510,8 +513,9 @@ def start_web_server(app_state, sp_oauth):
             b = request.forms.get('brightness', type=int)
             p = request.forms.get('show_progress') == 'on'
             idle_mode = request.forms.get('idle_mode') or app_state.get('idle_mode', 'clock')
-            if idle_mode not in ('off', 'clock', 'clock_date', 'matrix_logo'):
+            if idle_mode not in ('off', 'clock', 'clock_date'):
                 idle_mode = 'clock'
+            idle_color = request.forms.get('idle_color') or app_state.get('idle_color', '#1ED760')
             idle_block_start = request.forms.get('idle_block_start') or app_state.get('idle_block_start', '00:00')
             idle_block_end = request.forms.get('idle_block_end') or app_state.get('idle_block_end', '00:00')
             
@@ -529,6 +533,7 @@ def start_web_server(app_state, sp_oauth):
             app_state['brightness'] = b
             app_state['show_progress'] = p
             app_state['idle_mode'] = idle_mode
+            app_state['idle_color'] = idle_color
             app_state['idle_block_start'] = idle_block_start
             app_state['idle_block_end'] = idle_block_end
 
@@ -540,6 +545,7 @@ def start_web_server(app_state, sp_oauth):
                     'show_progress': p,
                     'progress_color': app_state.get('progress_color', '#1ED760'),
                     'idle_mode': idle_mode,
+                    'idle_color': idle_color,
                     'idle_block_start': idle_block_start,
                     'idle_block_end': idle_block_end
                 }, f)
