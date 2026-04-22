@@ -83,7 +83,7 @@ opts.drop_privileges = True
 opts.drop_priv_user = 'dietpi'
 opts.drop_priv_group = 'dietpi'
 opts.show_refresh_rate = 1
-opts.limit_refresh_rate_hz = 120
+opts.limit_refresh_rate_hz = 180
 opts.pwm_lsb_nanoseconds =75
 
 matrix = RGBMatrix(options=opts)
