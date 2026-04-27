@@ -10,7 +10,7 @@ HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Spotify Matrix Settings</title>
+    <title>Spotify Matrix Einstellungen</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         :root {
@@ -163,14 +163,14 @@ HTML_TEMPLATE = """
 
     <div class="grid-container">
         <div class="card">
-            <h3>Spotify Connection</h3>
+            <h3>Spotify Verbindung</h3>
             % if has_token:
             <div id="now-playing-container">
                 <div class="now-playing">
-                    <img id="np-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Album Art">
+                    <img id="np-img" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Albumcover">
                     <div class="now-playing-info">
-                        <div id="np-title" class="now-playing-title">Loading...</div>
-                        <div id="np-artist" class="now-playing-artist">Waiting for Spotify</div>
+                        <div id="np-title" class="now-playing-title">Lädt...</div>
+                        <div id="np-artist" class="now-playing-artist">Warten auf Spotify</div>
                     </div>
                 </div>
                 <div class="np-progress-wrap">
@@ -193,22 +193,22 @@ HTML_TEMPLATE = """
                         <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7zM20 5v14h-2V5z"/></svg>
                     </button>
                 </div>
-                <a href="/logout" class="btn btn-red" style="margin-top: 25px;">Disconnect Account</a>
+                <a href="/logout" class="btn btn-red" style="margin-top: 25px;">Konto trennen</a>
             </div>
         % else:
             <div class="status">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                Not Linked
+                Nicht verbunden
             </div>
-            <a href="/login" class="btn btn-green">Link to Spotify</a>
+            <a href="/login" class="btn btn-green">Mit Spotify verbinden</a>
         % end
     </div>
 
     <div class="card">
-        <h3>Display Settings</h3>
+        <h3>Anzeigeeinstellungen</h3>
         <form action="/save_settings" method="POST">
             <div class="setting-row">
-                <label>Track Progress Bar</label>
+                <label>Fortschrittsbalken anzeigen</label>
                 <label class="switch">
                     <input type="checkbox" name="show_progress" {{'checked' if show_progress else ''}}>
                     <span class="slider round"></span>
@@ -216,70 +216,70 @@ HTML_TEMPLATE = """
             </div>
             
             <div class="setting-row">
-                <label>Bar Color</label>
+                <label>Balkenfarbe</label>
                 <div style="display: flex; gap: 10px; align-items: center;">
                     <input type="color" name="progress_color" value="{{progress_color}}" style="width: 50px; height: 35px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: transparent;">
-                    <button type="submit" name="action" value="reset_color" style="background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); border-radius: 4px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">Reset</button>
+                    <button type="submit" name="action" value="reset_color" style="background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); border-radius: 4px; padding: 5px 10px; font-size: 0.8rem; cursor: pointer;">Zurücksetzen</button>
                 </div>
             </div>
             
-            <label>Brightness</label>
+            <label>Helligkeit</label>
             <input type="range" name="brightness" min="1" max="100" value="{{brightness}}">
             <div class="slider-values">
-                <span>Dim</span>
-                <span>Bright</span>
+                <span>Dunkel</span>
+                <span>Hell</span>
             </div>
 
-            <label>Idle Screen Mode</label>
+            <label>Idle-Bildschirmmodus</label>
             <select name="idle_mode" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
-                <option value="off" {{'selected' if idle_mode == 'off' else ''}}>Off (black screen)</option>
-                <option value="clock" {{'selected' if idle_mode == 'clock' else ''}}>Clock</option>
-                <option value="clock_date" {{'selected' if idle_mode == 'clock_date' else ''}}>Clock + Date</option>
+                <option value="off" {{'selected' if idle_mode == 'off' else ''}}>Aus (schwarzer Bildschirm)</option>
+                <option value="clock" {{'selected' if idle_mode == 'clock' else ''}}>Uhr</option>
+                <option value="clock_date" {{'selected' if idle_mode == 'clock_date' else ''}}>Uhr + Datum</option>
             </select>
 
-            <label>Idle Text Color</label>
+            <label>Textfarbe im Idle-Modus</label>
             <input type="color" name="idle_color" value="{{idle_color}}" style="width: 100%; height: 42px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; box-sizing: border-box;">
 
-            <label>Hide Idle Screen Between</label>
+            <label>Idle-Bildschirm ausblenden zwischen</label>
             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
                 <input type="time" name="idle_block_start" value="{{idle_block_start}}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box;">
-                <span style="color: var(--text-secondary);">to</span>
+                <span style="color: var(--text-secondary);">bis</span>
                 <input type="time" name="idle_block_end" value="{{idle_block_end}}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box;">
             </div>
-            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -8px; margin-bottom: 14px;">Set both times equal to disable this schedule.</p>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -8px; margin-bottom: 14px;">Setze beide Zeiten gleich, um diesen Zeitplan zu deaktivieren.</p>
             
-            <button type="submit" class="btn btn-blue">Apply Settings</button>
+            <button type="submit" class="btn btn-blue">Einstellungen anwenden</button>
         </form>
     </div>
 
     <div class="card">
-        <h3>Network Settings</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Connect the matrix to a new Wi-Fi network.</p>
+        <h3>Netzwerkeinstellungen</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Verbinde die Matrix mit einem neuen WLAN-Netzwerk.</p>
         <form action="/system_wifi" method="POST">
-            <label style="margin-bottom: 5px;">Wi-Fi Network Name (SSID)</label>
-            <input type="text" name="ssid" placeholder="Enter Wi-Fi Name" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
+            <label style="margin-bottom: 5px;">WLAN-Name (SSID)</label>
+            <input type="text" name="ssid" placeholder="WLAN-Namen eingeben" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
             
-            <label style="margin-bottom: 5px;">Wi-Fi Password</label>
-            <input type="text" name="password" placeholder="Leave blank if open web" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
+            <label style="margin-bottom: 5px;">WLAN-Passwort</label>
+            <input type="text" name="password" placeholder="Leer lassen bei offenem Netzwerk" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
             
-            <button type="submit" class="btn btn-green" style="margin-top: 0;">Save Wi-Fi & Reboot</button>
+            <button type="submit" class="btn btn-green" style="margin-top: 0;">WLAN speichern & neu starten</button>
         </form>
     </div>
 
     <div class="card">
-        <h3>System Management</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 5px;">Manage updates and device power.</p>
+        <h3>Systemverwaltung</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 5px;">Updates und Stromversorgung verwalten.</p>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Version: <span style="color: var(--spotify-green);">{{version}}</span></p>
         <div style="display: flex; gap: 10px; flex-direction: column;">
-            <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Check For Updates</button>
+            <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Auf Updates prüfen</button>
             <form id="updateForm" action="/system_update" method="POST" style="display: none;"></form>
             
             <div style="display: flex; gap: 10px; margin-top: 10px;">
                 <form action="/system_power" method="POST" style="flex: 1;">
-                    <button type="submit" name="command" value="reboot" class="btn btn-red" style="margin-top: 0;">Reboot</button>
+                    <button type="submit" name="command" value="reboot" class="btn btn-red" style="margin-top: 0;">Neustart</button>
                 </form>
                 <form action="/system_power" method="POST" style="flex: 1;">
-                    <button type="submit" name="command" value="shutdown" class="btn btn-red" style="margin-top: 0;">Shutdown</button>
+                    <button type="submit" name="command" value="shutdown" class="btn btn-red" style="margin-top: 0;">Herunterfahren</button>
                 </form>
             </div>
         </div>
@@ -289,10 +289,10 @@ HTML_TEMPLATE = """
     <!-- Custom Modal UI -->
     <div id="customModal" class="modal-overlay">
         <div class="modal">
-            <h3 id="modalTitle" style="margin-bottom: 10px; font-size: 1.3rem;">Title</h3>
-            <p id="modalMessage" style="color: var(--text-secondary); font-size: 0.95rem;">Message text goes here.</p>
+            <h3 id="modalTitle" style="margin-bottom: 10px; font-size: 1.3rem;">Titel</h3>
+            <p id="modalMessage" style="color: var(--text-secondary); font-size: 0.95rem;">Nachrichtentext erscheint hier.</p>
             <div class="modal-actions">
-                <button id="modalCancel" class="btn btn-red" onclick="hideModal()">Cancel</button>
+                <button id="modalCancel" class="btn btn-red" onclick="hideModal()">Abbrechen</button>
                 <button id="modalConfirm" class="btn btn-green">OK</button>
             </div>
         </div>
@@ -348,15 +348,15 @@ HTML_TEMPLATE = """
                 document.getElementById('np-progress-fill').style.width = pct + '%';
                 document.getElementById('np-progress-time').innerText = formatMs(progress) + ' / ' + formatMs(duration);
             } else {
-                document.getElementById('np-title').innerText = "Paused";
-                document.getElementById('np-artist').innerText = "Matrix is waiting for music...";
+                document.getElementById('np-title').innerText = "Pausiert";
+                document.getElementById('np-artist').innerText = "Matrix wartet auf Musik...";
                 document.getElementById('icon-play').style.display = 'inline-block';
                 document.getElementById('icon-pause').style.display = 'none';
                 document.getElementById('np-progress-fill').style.width = '0%';
                 document.getElementById('np-progress-time').innerText = '0:00 / 0:00';
             }
         })
-        .catch(err => console.log('Error fetching now playing', err));
+        .catch(err => console.log('Fehler beim Abrufen von "Jetzt läuft"', err));
     }
 
     function playbackCommand(cmd) {
@@ -380,20 +380,20 @@ HTML_TEMPLATE = """
         })
         .catch(err => {
             btn.style.opacity = '1';
-            console.error('Command issue', err);
+            console.error('Fehler beim Abspielen-Befehl', err);
         });
     }
 
     function checkUpdates() {
         var btn = document.getElementById('checkUpdateBtn');
-        var originalText = "Check For Updates";
-        btn.innerHTML = 'Checking... <div class="spinner"></div>';
+        var originalText = "Auf Updates prüfen";
+        btn.innerHTML = 'Prüfe... <div class="spinner"></div>';
         btn.disabled = true;
         
         // Fast client-side check directly against GitHub API
         fetch('https://api.github.com/repos/jonasradke/spotify-matrix-mvp/commits/main')
         .then(res => {
-            if (!res.ok) throw new Error('Failed to fetch from GitHub');
+            if (!res.ok) throw new Error('Abruf von GitHub fehlgeschlagen');
             return res.json();
         })
         .then(data => {
@@ -402,17 +402,17 @@ HTML_TEMPLATE = """
             
             var remoteHash = data.sha;
             if (!localHash || localHash === "") {
-                showModal("Update Error", "Could not check version. Unknown local state.", false, null);
+                showModal("Update-Fehler", "Version konnte nicht geprüft werden. Lokaler Status unbekannt.", false, null);
             } else if (remoteHash && !remoteHash.startsWith(localHash)) {
-                showModal("Update Available", "Updates are available! Do you want to install them now and restart the matrix?", true, function() {
-                    btn.innerHTML = 'Updating & Restarting... <div class="spinner"></div>';
+                showModal("Update verfügbar", "Es sind Updates verfügbar! Möchtest du sie jetzt installieren und die Matrix neu starten?", true, function() {
+                    btn.innerHTML = 'Update & Neustart... <div class="spinner"></div>';
                     btn.disabled = true;
                     btn.classList.remove('btn-blue');
                     btn.classList.add('btn-green');
                     document.getElementById('updateForm').submit();
                 });
             } else {
-                btn.innerHTML = 'Up to Date ✓';
+                btn.innerHTML = 'Aktuell ✓';
                 btn.disabled = true;
                 setTimeout(() => { 
                     btn.innerHTML = originalText; 
@@ -423,7 +423,7 @@ HTML_TEMPLATE = """
         .catch(err => {
             btn.innerHTML = originalText;
             btn.disabled = false;
-            showModal("Network Error", "Could not reach GitHub to check for updates.", false, null);
+            showModal("Netzwerkfehler", "GitHub konnte nicht erreicht werden, um nach Updates zu suchen.", false, null);
         });
     }
     </script>
@@ -457,7 +457,7 @@ def start_web_server(app_state, sp_oauth):
 
             return f"v1.0.{commit_hash[:7]}"
         except:
-            return "Unknown Version"
+            return "Unbekannte Version"
 
     def get_current_hash():
         try:
@@ -505,7 +505,7 @@ def start_web_server(app_state, sp_oauth):
             sp_oauth.get_access_token(code, as_dict=False)
             app_state['reload_spotify'] = True # dynamically reload spotify client
             redirect('/')
-        return "Error generating token."
+        return "Fehler beim Erzeugen des Tokens."
 
     @app.route('/save_settings', method='POST')
     def save_settings():
@@ -550,7 +550,7 @@ def start_web_server(app_state, sp_oauth):
                     'idle_block_end': idle_block_end
                 }, f)
         except Exception as e:
-            return f"Error saving settings: {str(e)}"
+            return f"Fehler beim Speichern der Einstellungen: {str(e)}"
         redirect('/')
 
     @app.route('/logout')
@@ -579,11 +579,11 @@ def start_web_server(app_state, sp_oauth):
 
                 # We also trigger a system reboot so it connects properly
                 subprocess.Popen(['sudo', 'reboot'])
-                msg = "Wi-Fi saved successfully!<br><br>The matrix is rebooting to connect."
+                msg = "WLAN erfolgreich gespeichert!<br><br>Die Matrix startet neu, um die Verbindung herzustellen."
             except Exception as e:
-                msg = f"Error saving Wi-Fi: {e}"
+                msg = f"Fehler beim Speichern von WLAN: {e}"
         else:
-            msg = "Error: SSID cannot be empty."
+            msg = "Fehler: SSID darf nicht leer sein."
 
         return f"""
         <html>
@@ -595,9 +595,9 @@ def start_web_server(app_state, sp_oauth):
             <meta http-equiv="refresh" content="20;url=/" />
         </head>
         <body>
-            <h2>Network Configuration</h2>
+            <h2>Netzwerkkonfiguration</h2>
             <p>{msg}</p>
-            <p>If the connection is successful, this hotspot will disappear.<br>Please rejoin your normal Wi-Fi network.</p>
+            <p>Wenn die Verbindung erfolgreich ist, verschwindet dieser Hotspot.<br>Bitte verbinde dich wieder mit deinem normalen WLAN.</p>
         </body>
         </html>
         """
@@ -608,10 +608,10 @@ def start_web_server(app_state, sp_oauth):
         command = request.forms.get('command')
         if command == 'reboot':
             subprocess.Popen(['sudo', 'reboot'])
-            msg = "Rebooting device..."
+            msg = "Gerät wird neu gestartet..."
         elif command == 'shutdown':
             subprocess.Popen(['sudo', 'shutdown', '-h', 'now'])
-            msg = "Shutting down device... You can safely unplug the power in 15 seconds."
+            msg = "Gerät wird heruntergefahren... Du kannst den Strom in 15 Sekunden sicher trennen."
         else:
             redirect('/')
             return
@@ -652,10 +652,10 @@ def start_web_server(app_state, sp_oauth):
                     </style>
                 </head>
                 <body>
-                    <h2>Update Failed</h2>
-                    <p>The matrix could not pull the latest update. Please resolve the Git issue and try again.</p>
+                    <h2>Update fehlgeschlagen</h2>
+                    <p>Die Matrix konnte das neueste Update nicht laden. Bitte behebe das Git-Problem und versuche es erneut.</p>
                     <pre>{error_output}</pre>
-                    <p><a href=\"/\">Back to Settings</a></p>
+                    <p><a href=\"/\">Zurück zu den Einstellungen</a></p>
                 </body>
                 </html>
                 """
@@ -671,10 +671,10 @@ def start_web_server(app_state, sp_oauth):
                 </style>
             </head>
             <body>
-                <h2>Update Failed</h2>
-                <p>An unexpected error occurred while checking for updates.</p>
+                <h2>Update fehlgeschlagen</h2>
+                <p>Beim Prüfen auf Updates ist ein unerwarteter Fehler aufgetreten.</p>
                 <p>{str(e)}</p>
-                <p><a href=\"/\">Back to Settings</a></p>
+                <p><a href=\"/\">Zurück zu den Einstellungen</a></p>
             </body>
             </html>
             """
@@ -694,10 +694,10 @@ def start_web_server(app_state, sp_oauth):
             <meta http-equiv="refresh" content="15;url=/" />
         </head>
         <body>
-            <h2>Updating & Restarting...</h2>
+            <h2>Update & Neustart...</h2>
             <div class="spinner"></div>
-            <p style="margin-top: 30px;">The matrix is downloading new code and rebooting.</p>
-            <p>This page will auto-refresh in 15 seconds.</p>
+            <p style="margin-top: 30px;">Die Matrix lädt neuen Code herunter und startet neu.</p>
+            <p>Diese Seite aktualisiert sich in 15 Sekunden automatisch.</p>
         </body>
         </html>
         """
@@ -717,7 +717,7 @@ def start_web_server(app_state, sp_oauth):
     def api_playback():
         command = request.forms.get('command')
         if not sp_oauth.get_cached_token():
-            return {'status': 'error', 'message': 'Not logged in'}
+            return {'status': 'error', 'message': 'Nicht angemeldet'}
         
         try:
             sp = get_spotify_client()
