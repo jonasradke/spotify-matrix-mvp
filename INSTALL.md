@@ -39,8 +39,8 @@ sudo systemctl start spotify-matrix
 The `install.sh` script automates the following setup steps:
 
 1. **Updates system packages** - Ensures your system is current
-2. **Installs dependencies** - Python, build tools, image libraries, GPIO libraries, OpenSSL
-2.5. **Builds rpi-rgb-led-matrix** - Clones hzeller's library from GitHub and compiles Python bindings
+2. **Installs dependencies** - Python, build tools, image libraries, OpenSSL, and Cython
+2.5. **Installs rpi-rgb-led-matrix** - Installs hzeller's LED matrix Python bindings via pip (uses scikit-build-core)
 3. **Installs Python packages** - From requirements.txt (Spotipy, Bottle, etc.)
 4. **Creates .env file** - Template for Spotify API credentials
 5. **Generates SSL certificates** - Self-signed certs for HTTPS on matrix.local
@@ -57,31 +57,19 @@ If you prefer more control or need to troubleshoot:
 sudo apt-get update && sudo apt-get upgrade -y
 
 # 2. Install system dependencies
-sudo apt-get install -y python3 python3-pip git build-essential \
+sudo apt-get install -y python3 python3-pip python3-dev git build-essential \
   libopenjp2-7-dev libtiff5-dev libharfbuzz0b libwebp6 libjasper1 \
-  libatlas-base-dev swig openssl curl libgpiod-dev libgpiodcxx-dev
+  libatlas-base-dev cython3 openssl curl
 
 # 3. Clone and navigate to repo
 git clone https://github.com/jonasradke/spotify-matrix-mvp.git
 cd spotify-matrix-mvp
 
-# 4. Build and install rpi-rgb-led-matrix library
-git clone https://github.com/hzeller/rpi-rgb-led-matrix.git /opt/rpi-rgb-led-matrix
-cd /opt/rpi-rgb-led-matrix
-make -C lib HARDWARE_DESC=adafruit-hat-pwm
-cd python
-pip3 install -e .
-cd ~/spotify-matrix-mvp
+# 4. Install rpi-rgb-led-matrix Python bindings (includes C++ library build)
+pip3 install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
 
 # 5. Install Python dependencies
 pip3 install -r requirements.txt
-
-# 6. Create .env file with Spotify credentials
-cat > .env << EOF
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-SPOTIFY_REDIRECT_URI=https://matrix.local/callback
-EOF
 
 # 6. Create .env file with Spotify credentials
 cat > .env << EOF

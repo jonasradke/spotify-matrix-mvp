@@ -50,41 +50,18 @@ apt-get install -y \
   libjasper1 \
   libatlas-base-dev \
   libjasper-dev \
-  libharfbuzz0b \
-  libwebp6 \
-  libtiff5 \
-  libopenjp2-7 \
-  libopenjp2-7-dev \
   python3-pil \
-  swig \
+  cython3 \
   openssl \
-  curl \
-  libgpiod-dev \
-  libgpiodcxx-dev
+  curl
 
 echo -e "${GREEN}✓ System dependencies installed${NC}"
 echo ""
 
-# Step 2.5: Build and install rpi-rgb-led-matrix Python bindings
-echo -e "${YELLOW}[2.5/7] Building rpi-rgb-led-matrix library...${NC}"
-MATRIX_LIB_DIR="/opt/rpi-rgb-led-matrix"
-
-if [ ! -d "$MATRIX_LIB_DIR" ]; then
-  git clone https://github.com/hzeller/rpi-rgb-led-matrix.git "$MATRIX_LIB_DIR"
-  cd "$MATRIX_LIB_DIR"
-  
-  # Build the C++ library
-  make -C lib HARDWARE_DESC=adafruit-hat-pwm
-  
-  # Build and install Python bindings
-  cd python
-  pip3 install -e .
-  
-  cd "$SCRIPT_DIR"
-  echo -e "${GREEN}✓ rpi-rgb-led-matrix library installed${NC}"
-else
-  echo -e "${GREEN}✓ rpi-rgb-led-matrix already installed${NC}"
-fi
+# Step 2.5: Install rpi-rgb-led-matrix Python bindings
+echo -e "${YELLOW}[2.5/8] Installing rpi-rgb-led-matrix Python bindings...${NC}"
+pip3 install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
+echo -e "${GREEN}✓ rpi-rgb-led-matrix Python bindings installed${NC}"
 echo ""
 
 # Step 3: Install Python dependencies
