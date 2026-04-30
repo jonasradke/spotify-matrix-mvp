@@ -36,7 +36,9 @@ echo ""
 # Step 2: Install system dependencies
 echo -e "${YELLOW}[2/8] Installing system dependencies...${NC}"
 apt-get install -y \
-  python3 \  python3-venv \  python3-pip \
+  python3 \
+  python3-venv \
+  python3-pip \
   python3-dev \
   git \
   build-essential \
