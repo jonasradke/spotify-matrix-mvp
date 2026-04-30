@@ -28,36 +28,42 @@ HTML_TEMPLATE = """
             --spotify-green-hover: #1ed760;
             --danger-color: #e91429;
             --danger-hover: #ff1a33;
+            --border-color: #2c2c2c;
         }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             background-color: var(--bg-color);
             color: var(--text-color);
-            padding: 20px; 
-            max-width: 900px; 
+            padding: clamp(16px, 3vw, 28px); 
+            max-width: 1180px; 
             margin: auto; 
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
-        h2 { text-align: center; margin-bottom: 30px; font-weight: 700; letter-spacing: -0.04em; }
+        h2 { text-align: center; margin-bottom: 24px; font-weight: 700; letter-spacing: -0.04em; font-size: clamp(1.8rem, 4vw, 2.6rem); }
         h3 { margin-top: 0; font-size: 1.2rem; font-weight: 600; }
+        .page-intro {
+            text-align: center;
+            color: var(--text-secondary);
+            margin: -8px auto 24px;
+            max-width: 64ch;
+            font-size: 0.98rem;
+        }
         .grid-container {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
-        @media (min-width: 768px) {
-            .grid-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: clamp(16px, 2vw, 24px);
+            align-items: start;
         }
         .card { 
             background-color: var(--card-bg); 
-            padding: 24px; 
-            border-radius: 12px; 
+            padding: clamp(18px, 2.8vw, 28px); 
+            border-radius: 16px; 
+            border: 1px solid rgba(255,255,255,0.04);
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
         .status { margin: 15px 0; font-size: 1rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
         .status.success { color: var(--spotify-green); }
@@ -110,6 +116,7 @@ HTML_TEMPLATE = """
             border-radius: 2px;
         }
         .slider-values { display: flex; justify-content: space-between; color: var(--text-secondary); font-size: 0.8rem; margin-top: -15px; margin-bottom: 15px; }
+        .section-kicker { margin: 0 0 12px; color: var(--text-secondary); font-size: 0.9rem; }
         
         /* Toggle Switch CSS */
         .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
@@ -190,12 +197,50 @@ HTML_TEMPLATE = """
             color: var(--text-secondary);
             font-size: 0.9rem;
         }
+
+        .advanced-panel {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            margin-top: 24px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .advanced-panel summary {
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .advanced-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .advanced-panel summary::after {
+            content: "⌄";
+            color: var(--text-secondary);
+            transition: transform 0.2s ease;
+        }
+
+        .advanced-panel[open] summary::after {
+            transform: rotate(180deg);
+        }
+
+        .advanced-panel-body {
+            margin-top: 16px;
+        }
         
         #unlinked-msg { display: none; margin-top: 15px; color: var(--text-secondary); font-size: 0.9rem; text-align: center; }
     </style>
 </head>
 <body>
     <h2>Spotify Matrix</h2>
+    <p class="page-intro">Steuere Spotify, Display und WLAN auf einer responsiven Oberfläche. Die feineren Matrix-Optionen sind jetzt in einem separaten Bereich gesammelt.</p>
 
     <div class="grid-container">
         <div class="card">
@@ -242,6 +287,7 @@ HTML_TEMPLATE = """
 
     <div class="card">
         <h3>Anzeigeeinstellungen</h3>
+        <p class="section-kicker">Basiswerte für Helligkeit, Idle-Verhalten und das Fortschritts-Overlay.</p>
         <form action="/save_settings" method="POST">
             <div class="setting-row">
                 <label>Fortschrittsbalken anzeigen</label>
@@ -284,48 +330,52 @@ HTML_TEMPLATE = """
             </div>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -8px; margin-bottom: 14px;">Setze beide Zeiten gleich, um diesen Zeitplan zu deaktivieren.</p>
 
-            <h3 style="margin-top: 28px;">Matrix-Hardware</h3>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Änderungen an diesen Werten benötigen einen Neustart der Matrix.</p>
-            <div class="matrix-settings-grid">
-                <div class="matrix-field">
-                    <label>Rows</label>
-                    <input type="number" name="matrix_rows" min="1" max="256" value="{{matrix_rows}}">
-                </div>
-                <div class="matrix-field">
-                    <label>Cols</label>
-                    <input type="number" name="matrix_cols" min="1" max="256" value="{{matrix_cols}}">
-                </div>
-                <div class="matrix-field">
-                    <label>GPIO Slowdown</label>
-                    <input type="number" name="gpio_slowdown" min="0" max="10" value="{{gpio_slowdown}}">
-                </div>
-                <div class="matrix-field">
-                    <label>Limit Refresh Rate (Hz)</label>
-                    <input type="number" name="limit_refresh_rate_hz" min="1" max="1000" value="{{limit_refresh_rate_hz}}">
-                </div>
-                <div class="matrix-field">
-                    <label>Slowdown / PWM LSB ns</label>
-                    <input type="number" name="pwm_lsb_nanoseconds" min="0" max="10000" value="{{pwm_lsb_nanoseconds}}">
-                </div>
-                <div class="matrix-field">
-                    <label>Chain Length</label>
-                    <input type="number" name="chain_length" min="1" max="16" value="{{chain_length}}">
-                </div>
-                <div class="matrix-field">
-                    <label>Parallel</label>
-                    <input type="number" name="parallel" min="1" max="16" value="{{parallel}}">
-                </div>
-                <div class="matrix-field">
-                    <label>Refresh-Rate auf Matrix anzeigen</label>
-                    <div class="setting-row" style="margin-bottom: 0;">
-                        <label style="margin-bottom: 0; color: var(--text-secondary);">Aktivieren</label>
-                        <label class="switch">
-                            <input type="checkbox" name="show_refresh_rate" {{'checked' if show_refresh_rate else ''}}>
-                            <span class="slider round"></span>
-                        </label>
+            <details class="advanced-panel">
+                <summary>Erweiterte Matrix-Einstellungen</summary>
+                <div class="advanced-panel-body">
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Feintuning für Panel-Geometrie, Refresh-Verhalten und Kettengröße. Änderungen brauchen einen Neustart der Matrix.</p>
+                    <div class="matrix-settings-grid">
+                        <div class="matrix-field">
+                            <label>Rows</label>
+                            <input type="number" name="matrix_rows" min="1" max="256" value="{{matrix_rows}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>Cols</label>
+                            <input type="number" name="matrix_cols" min="1" max="256" value="{{matrix_cols}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>GPIO Slowdown</label>
+                            <input type="number" name="gpio_slowdown" min="0" max="10" value="{{gpio_slowdown}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>Limit Refresh Rate (Hz)</label>
+                            <input type="number" name="limit_refresh_rate_hz" min="1" max="1000" value="{{limit_refresh_rate_hz}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>Slowdown / PWM LSB ns</label>
+                            <input type="number" name="pwm_lsb_nanoseconds" min="0" max="10000" value="{{pwm_lsb_nanoseconds}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>Chain Length</label>
+                            <input type="number" name="chain_length" min="1" max="16" value="{{chain_length}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>Parallel</label>
+                            <input type="number" name="parallel" min="1" max="16" value="{{parallel}}">
+                        </div>
+                        <div class="matrix-field">
+                            <label>Refresh-Rate auf Matrix anzeigen</label>
+                            <div class="setting-row" style="margin-bottom: 0;">
+                                <label style="margin-bottom: 0; color: var(--text-secondary);">Aktivieren</label>
+                                <label class="switch">
+                                    <input type="checkbox" name="show_refresh_rate" {{'checked' if show_refresh_rate else ''}}>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </details>
             
             <button type="submit" class="btn btn-blue">Einstellungen anwenden</button>
         </form>
