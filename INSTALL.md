@@ -61,7 +61,7 @@ If you prefer more control or need to troubleshoot:
 sudo apt-get update && sudo apt-get upgrade -y
 
 # 2. Install system dependencies
-sudo apt-get install -y python3 python3-pip python3-dev git build-essential \
+sudo apt-get install -y python3 python3-venv python3-pip python3-dev git build-essential \
   cython3 openssl curl
 
 # 3. Clone and navigate to repo
