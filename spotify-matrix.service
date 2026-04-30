@@ -20,6 +20,9 @@ CPUAffinity=3
 # Use the Python executable from the virtual environment directly
 ExecStart=/path/to/spotify-matrix-mvp/.venv/bin/python /path/to/spotify-matrix-mvp/main.py
 
+# Load Spotify credentials from the repo-local .env file
+EnvironmentFile=/path/to/spotify-matrix-mvp/.env
+
 # Auto-restart on both clean exits (sys.exit(0) triggered by the Web UI) and crashes (WiFi drops)
 Restart=always
 RestartSec=10

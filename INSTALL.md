@@ -24,7 +24,7 @@ sudo ./install.sh
 
 # 3. Configure Spotify credentials
 nano .env
-# Add your SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET
+# Add your SPOTIPY_CLIENT_ID and SPOTIPY_CLIENT_SECRET
 # Get these from: https://developer.spotify.com/dashboard
 
 # 4. Start the service
@@ -80,8 +80,8 @@ python3 -m venv .venv
 
 # 7. Create .env file with Spotify credentials
 cat > .env << EOF
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
+SPOTIPY_CLIENT_ID=your_client_id
+SPOTIPY_CLIENT_SECRET=your_client_secret
 SPOTIFY_REDIRECT_URI=https://matrix.local/callback
 EOF
 
@@ -162,6 +162,7 @@ All settings are stored in `settings.json` and can be managed via the web UI:
 - **Matrix Hardware**: Rows, columns, GPIO slowdown, refresh rate, chain length, parallel
 - **Performance**: PWM settings, refresh rate limits
 - **Advanced**: GPIO-specific tuning for your hardware
+- **Spotify Credentials**: Loaded from `.env` using Spotipy's `SPOTIPY_*` variable names
 
 ## Troubleshooting
 

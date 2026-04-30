@@ -79,8 +79,8 @@ echo ""
 # Step 4: Create .env file if it doesn't exist
 echo -e "${YELLOW}[4/9] Setting up environment configuration...${NC}"
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
-  echo "SPOTIFY_CLIENT_ID=your_client_id_here" > "$SCRIPT_DIR/.env"
-  echo "SPOTIFY_CLIENT_SECRET=your_client_secret_here" >> "$SCRIPT_DIR/.env"
+  echo "SPOTIPY_CLIENT_ID=your_client_id_here" > "$SCRIPT_DIR/.env"
+  echo "SPOTIPY_CLIENT_SECRET=your_client_secret_here" >> "$SCRIPT_DIR/.env"
   echo "SPOTIFY_REDIRECT_URI=https://matrix.local/callback" >> "$SCRIPT_DIR/.env"
   echo -e "${YELLOW}⚠ Created .env file with placeholders${NC}"
   echo -e "${YELLOW}  Please edit $SCRIPT_DIR/.env and add your Spotify credentials${NC}"

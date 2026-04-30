@@ -4,6 +4,7 @@ import requests
 import sys
 import json
 from io import BytesIO
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
@@ -12,10 +13,9 @@ from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
 from web_ui import start_web_server
 
-load_dotenv()
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(BASE_DIR, 'settings.json')
+load_dotenv(dotenv_path=Path(BASE_DIR) / '.env')
 
 # Load saved settings if they exist
 loaded_brightness = 100
