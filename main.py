@@ -25,6 +25,14 @@ loaded_idle_mode = "clock"
 loaded_idle_color = "#1ED760"
 loaded_idle_block_start = "00:00"
 loaded_idle_block_end = "00:00"
+loaded_matrix_rows = 64
+loaded_matrix_cols = 64
+loaded_gpio_slowdown = 1
+loaded_limit_refresh_rate_hz = 165
+loaded_pwm_lsb_nanoseconds = 75
+loaded_chain_length = 1
+loaded_parallel = 1
+loaded_show_refresh_rate = False
 try:
     with open(SETTINGS_FILE, 'r') as f:
         saved_settings = json.load(f)
@@ -35,6 +43,14 @@ try:
         loaded_idle_color = saved_settings.get('idle_color', '#1ED760')
         loaded_idle_block_start = saved_settings.get('idle_block_start', '00:00')
         loaded_idle_block_end = saved_settings.get('idle_block_end', '00:00')
+        loaded_matrix_rows = saved_settings.get('matrix_rows', 64)
+        loaded_matrix_cols = saved_settings.get('matrix_cols', 64)
+        loaded_gpio_slowdown = saved_settings.get('gpio_slowdown', 1)
+        loaded_limit_refresh_rate_hz = saved_settings.get('limit_refresh_rate_hz', 165)
+        loaded_pwm_lsb_nanoseconds = saved_settings.get('pwm_lsb_nanoseconds', 75)
+        loaded_chain_length = saved_settings.get('chain_length', 1)
+        loaded_parallel = saved_settings.get('parallel', 1)
+        loaded_show_refresh_rate = saved_settings.get('show_refresh_rate', False)
 except FileNotFoundError:
     pass
 
@@ -48,7 +64,15 @@ if not os.path.exists(SETTINGS_FILE):
             'idle_mode': loaded_idle_mode,
             'idle_color': loaded_idle_color,
             'idle_block_start': loaded_idle_block_start,
-            'idle_block_end': loaded_idle_block_end
+            'idle_block_end': loaded_idle_block_end,
+            'matrix_rows': loaded_matrix_rows,
+            'matrix_cols': loaded_matrix_cols,
+            'gpio_slowdown': loaded_gpio_slowdown,
+            'limit_refresh_rate_hz': loaded_limit_refresh_rate_hz,
+            'pwm_lsb_nanoseconds': loaded_pwm_lsb_nanoseconds,
+            'chain_length': loaded_chain_length,
+            'parallel': loaded_parallel,
+            'show_refresh_rate': loaded_show_refresh_rate
         }, f)
 # Ensure it's writable by all users (so the dropped 'dietpi' user can edit it)
 os.chmod(SETTINGS_FILE, 0o666)
@@ -70,7 +94,15 @@ app_state = {
     'idle_mode': loaded_idle_mode,
     'idle_color': loaded_idle_color,
     'idle_block_start': loaded_idle_block_start,
-    'idle_block_end': loaded_idle_block_end
+    'idle_block_end': loaded_idle_block_end,
+    'matrix_rows': loaded_matrix_rows,
+    'matrix_cols': loaded_matrix_cols,
+    'gpio_slowdown': loaded_gpio_slowdown,
+    'limit_refresh_rate_hz': loaded_limit_refresh_rate_hz,
+    'pwm_lsb_nanoseconds': loaded_pwm_lsb_nanoseconds,
+    'chain_length': loaded_chain_length,
+    'parallel': loaded_parallel,
+    'show_refresh_rate': loaded_show_refresh_rate
 }
 
 
@@ -172,18 +204,20 @@ load_dotenv()
 
 # 1. Setup Matrix (Optimized for Pi Zero)
 opts = RGBMatrixOptions()
-opts.rows = 64
-opts.cols = 64
+opts.rows = app_state['matrix_rows']
+opts.cols = app_state['matrix_cols']
 opts.hardware_mapping = 'adafruit-hat-pwm'
 opts.pwm_bits = 11
 opts.brightness = app_state['brightness']
-opts.gpio_slowdown = 1
+opts.gpio_slowdown = app_state['gpio_slowdown']
 opts.drop_privileges = True
 opts.drop_priv_user = 'dietpi'
 opts.drop_priv_group = 'dietpi'
-opts.show_refresh_rate = 0
-opts.limit_refresh_rate_hz = 165
-opts.pwm_lsb_nanoseconds =75
+opts.show_refresh_rate = 1 if app_state.get('show_refresh_rate') else 0
+opts.limit_refresh_rate_hz = app_state['limit_refresh_rate_hz']
+opts.pwm_lsb_nanoseconds = app_state['pwm_lsb_nanoseconds']
+opts.chain_length = app_state['chain_length']
+opts.parallel = app_state['parallel']
 
 matrix = RGBMatrix(options=opts)
 

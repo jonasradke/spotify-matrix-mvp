@@ -12,6 +12,12 @@ HTML_TEMPLATE = """
 <head>
     <title>Spotify Matrix Einstellungen</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.svg">
     <style>
         :root {
             --bg-color: #121212;
@@ -154,6 +160,36 @@ HTML_TEMPLATE = """
         .control-btn:active { transform: scale(0.95); }
         .control-btn svg { width: 28px; height: 28px; display: block; fill: currentColor; }
         .play-btn svg { width: 36px; height: 36px; }
+
+        .matrix-settings-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        @media (min-width: 700px) {
+            .matrix-settings-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .matrix-field input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #121212;
+            color: white;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        .matrix-readout {
+            margin: 8px 0 16px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
         
         #unlinked-msg { display: none; margin-top: 15px; color: var(--text-secondary); font-size: 0.9rem; text-align: center; }
     </style>
@@ -247,6 +283,49 @@ HTML_TEMPLATE = """
                 <input type="time" name="idle_block_end" value="{{idle_block_end}}" style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box;">
             </div>
             <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: -8px; margin-bottom: 14px;">Setze beide Zeiten gleich, um diesen Zeitplan zu deaktivieren.</p>
+
+            <h3 style="margin-top: 28px;">Matrix-Hardware</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Änderungen an diesen Werten benötigen einen Neustart der Matrix.</p>
+            <div class="matrix-settings-grid">
+                <div class="matrix-field">
+                    <label>Rows</label>
+                    <input type="number" name="matrix_rows" min="1" max="256" value="{{matrix_rows}}">
+                </div>
+                <div class="matrix-field">
+                    <label>Cols</label>
+                    <input type="number" name="matrix_cols" min="1" max="256" value="{{matrix_cols}}">
+                </div>
+                <div class="matrix-field">
+                    <label>GPIO Slowdown</label>
+                    <input type="number" name="gpio_slowdown" min="0" max="10" value="{{gpio_slowdown}}">
+                </div>
+                <div class="matrix-field">
+                    <label>Limit Refresh Rate (Hz)</label>
+                    <input type="number" name="limit_refresh_rate_hz" min="1" max="1000" value="{{limit_refresh_rate_hz}}">
+                </div>
+                <div class="matrix-field">
+                    <label>Slowdown / PWM LSB ns</label>
+                    <input type="number" name="pwm_lsb_nanoseconds" min="0" max="10000" value="{{pwm_lsb_nanoseconds}}">
+                </div>
+                <div class="matrix-field">
+                    <label>Chain Length</label>
+                    <input type="number" name="chain_length" min="1" max="16" value="{{chain_length}}">
+                </div>
+                <div class="matrix-field">
+                    <label>Parallel</label>
+                    <input type="number" name="parallel" min="1" max="16" value="{{parallel}}">
+                </div>
+                <div class="matrix-field">
+                    <label>Refresh-Rate auf Matrix anzeigen</label>
+                    <div class="setting-row" style="margin-bottom: 0;">
+                        <label style="margin-bottom: 0; color: var(--text-secondary);">Aktivieren</label>
+                        <label class="switch">
+                            <input type="checkbox" name="show_refresh_rate" {{'checked' if show_refresh_rate else ''}}>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
             
             <button type="submit" class="btn btn-blue">Einstellungen anwenden</button>
         </form>
@@ -270,6 +349,7 @@ HTML_TEMPLATE = """
         <h3>Systemverwaltung</h3>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 5px;">Updates und Stromversorgung verwalten.</p>
         <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Version: <span style="color: var(--spotify-green);">{{version}}</span></p>
+        <p class="matrix-readout">Aktuelle Refresh-Rate: <span style="color: var(--spotify-green);">{{limit_refresh_rate_hz}} Hz</span></p>
         <div style="display: flex; gap: 10px; flex-direction: column;">
             <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Auf Updates prüfen</button>
             <form id="updateForm" action="/system_update" method="POST" style="display: none;"></form>
@@ -426,9 +506,155 @@ HTML_TEMPLATE = """
             showModal("Netzwerkfehler", "GitHub konnte nicht erreicht werden, um nach Updates zu suchen.", false, null);
         });
     }
+
+        if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                        navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                                console.warn('Service worker registration failed:', err);
+                        });
+                });
+        }
     </script>
 </body>
 </html>
+"""
+
+MANIFEST_CONTENT = """
+{
+    "name": "Spotify Matrix",
+    "short_name": "Matrix",
+    "description": "Weboberfläche für Spotify Matrix",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#121212",
+    "theme_color": "#121212",
+    "icons": [
+        {
+            "src": "/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
+"""
+
+SERVICE_WORKER_CONTENT = """
+const CACHE_NAME = 'spotify-matrix-pwa-v1';
+const APP_SHELL = [
+    '/',
+    '/manifest.webmanifest',
+    '/icon.svg'
+];
+
+const STATIC_ASSETS = new Set(APP_SHELL.concat(['/sw.js']));
+
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL))
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+        ))
+    );
+    self.clients.claim();
+});
+
+self.addEventListener('fetch', event => {
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
+    const requestUrl = new URL(event.request.url);
+
+    if (requestUrl.origin !== self.location.origin) {
+        return;
+    }
+
+    if (requestUrl.pathname.startsWith('/api/')) {
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then(response => {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put('/', responseClone));
+                    return response;
+                })
+                .catch(() => caches.match('/')
+                    .then(response => response || caches.match('/icon.svg')))
+        );
+        return;
+    }
+
+    if (!STATIC_ASSETS.has(requestUrl.pathname)) {
+        return;
+    }
+
+    event.respondWith(
+        caches.match(event.request).then(cached => {
+            if (cached) {
+                return cached;
+            }
+            return fetch(event.request).then(response => {
+                if (response && response.ok) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                }
+                return response;
+            });
+        })
+    );
+});
+"""
+
+ICON_SVG_CONTENT = """
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+    <title>Spotify Matrix</title>
+    <desc>Green matrix grid inspired icon for the Spotify Matrix web app</desc>
+    <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f0f0f"/>
+            <stop offset="100%" stop-color="#1b1b1b"/>
+        </linearGradient>
+        <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1ED760"/>
+            <stop offset="100%" stop-color="#1DB954"/>
+        </linearGradient>
+    </defs>
+    <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+    <g fill="url(#green)">
+        <rect x="108" y="108" width="56" height="56" rx="14"/>
+        <rect x="176" y="108" width="56" height="56" rx="14" opacity="0.92"/>
+        <rect x="244" y="108" width="56" height="56" rx="14" opacity="0.84"/>
+        <rect x="312" y="108" width="56" height="56" rx="14" opacity="0.76"/>
+        <rect x="108" y="176" width="56" height="56" rx="14" opacity="0.92"/>
+        <rect x="176" y="176" width="56" height="56" rx="14" opacity="0.86"/>
+        <rect x="244" y="176" width="56" height="56" rx="14" opacity="0.78"/>
+        <rect x="312" y="176" width="56" height="56" rx="14" opacity="0.7"/>
+        <rect x="108" y="244" width="56" height="56" rx="14" opacity="0.84"/>
+        <rect x="176" y="244" width="56" height="56" rx="14" opacity="0.78"/>
+        <rect x="244" y="244" width="56" height="56" rx="14" opacity="0.7"/>
+        <rect x="312" y="244" width="56" height="56" rx="14" opacity="0.62"/>
+        <rect x="108" y="312" width="56" height="56" rx="14" opacity="0.76"/>
+        <rect x="176" y="312" width="56" height="56" rx="14" opacity="0.7"/>
+        <rect x="244" y="312" width="56" height="56" rx="14" opacity="0.62"/>
+        <rect x="312" y="312" width="56" height="56" rx="14" opacity="0.54"/>
+    </g>
+    <circle cx="364" cy="148" r="28" fill="#ffffff" opacity="0.92"/>
+    <path d="M352 148l18-10v20z" fill="#0f0f0f"/>
+</svg>
 """
 
 def start_web_server(app_state, sp_oauth):
@@ -475,6 +701,25 @@ def start_web_server(app_state, sp_oauth):
         except:
             return ""
 
+    @app.route('/manifest.webmanifest')
+    def manifest():
+        response.content_type = 'application/manifest+json'
+        response.set_header('Cache-Control', 'public, max-age=3600')
+        return MANIFEST_CONTENT
+
+    @app.route('/sw.js')
+    def service_worker():
+        response.content_type = 'application/javascript; charset=utf-8'
+        response.set_header('Cache-Control', 'no-cache'
+        )
+        return SERVICE_WORKER_CONTENT
+
+    @app.route('/icon.svg')
+    def icon_svg():
+        response.content_type = 'image/svg+xml'
+        response.set_header('Cache-Control', 'public, max-age=86400')
+        return ICON_SVG_CONTENT
+
     @app.route('/')
     def index():
         has_token = bool(sp_oauth.get_cached_token())
@@ -487,6 +732,14 @@ def start_web_server(app_state, sp_oauth):
                         idle_color=app_state.get('idle_color', '#1ED760'),
                         idle_block_start=app_state.get('idle_block_start', '00:00'),
                         idle_block_end=app_state.get('idle_block_end', '00:00'),
+                        matrix_rows=app_state.get('matrix_rows', 64),
+                        matrix_cols=app_state.get('matrix_cols', 64),
+                        gpio_slowdown=app_state.get('gpio_slowdown', 1),
+                        limit_refresh_rate_hz=app_state.get('limit_refresh_rate_hz', 165),
+                        pwm_lsb_nanoseconds=app_state.get('pwm_lsb_nanoseconds', 75),
+                        chain_length=app_state.get('chain_length', 1),
+                        parallel=app_state.get('parallel', 1),
+                        show_refresh_rate=app_state.get('show_refresh_rate', False),
                         version=get_current_version(),
                         local_hash=get_current_hash())
 
@@ -518,6 +771,33 @@ def start_web_server(app_state, sp_oauth):
             idle_color = request.forms.get('idle_color') or app_state.get('idle_color', '#1ED760')
             idle_block_start = request.forms.get('idle_block_start') or app_state.get('idle_block_start', '00:00')
             idle_block_end = request.forms.get('idle_block_end') or app_state.get('idle_block_end', '00:00')
+            matrix_rows = request.forms.get('matrix_rows', type=int) or app_state.get('matrix_rows', 64)
+            matrix_cols = request.forms.get('matrix_cols', type=int) or app_state.get('matrix_cols', 64)
+            gpio_slowdown = request.forms.get('gpio_slowdown', type=int) or app_state.get('gpio_slowdown', 1)
+            limit_refresh_rate_hz = request.forms.get('limit_refresh_rate_hz', type=int) or app_state.get('limit_refresh_rate_hz', 165)
+            pwm_lsb_nanoseconds = request.forms.get('pwm_lsb_nanoseconds', type=int) or app_state.get('pwm_lsb_nanoseconds', 75)
+            chain_length = request.forms.get('chain_length', type=int) or app_state.get('chain_length', 1)
+            parallel = request.forms.get('parallel', type=int) or app_state.get('parallel', 1)
+            show_refresh_rate = request.forms.get('show_refresh_rate') == 'on'
+
+            matrix_rows = max(1, matrix_rows)
+            matrix_cols = max(1, matrix_cols)
+            gpio_slowdown = max(0, gpio_slowdown)
+            limit_refresh_rate_hz = max(1, limit_refresh_rate_hz)
+            pwm_lsb_nanoseconds = max(0, pwm_lsb_nanoseconds)
+            chain_length = max(1, chain_length)
+            parallel = max(1, parallel)
+
+            matrix_config_changed = any(app_state.get(key) != value for key, value in (
+                ('matrix_rows', matrix_rows),
+                ('matrix_cols', matrix_cols),
+                ('gpio_slowdown', gpio_slowdown),
+                ('limit_refresh_rate_hz', limit_refresh_rate_hz),
+                ('pwm_lsb_nanoseconds', pwm_lsb_nanoseconds),
+                ('chain_length', chain_length),
+                ('parallel', parallel),
+                ('show_refresh_rate', show_refresh_rate),
+            ))
             
             if request.forms.get('action') == 'reset_color':
                 c = '#1ED760'
@@ -536,6 +816,14 @@ def start_web_server(app_state, sp_oauth):
             app_state['idle_color'] = idle_color
             app_state['idle_block_start'] = idle_block_start
             app_state['idle_block_end'] = idle_block_end
+            app_state['matrix_rows'] = matrix_rows
+            app_state['matrix_cols'] = matrix_cols
+            app_state['gpio_slowdown'] = gpio_slowdown
+            app_state['limit_refresh_rate_hz'] = limit_refresh_rate_hz
+            app_state['pwm_lsb_nanoseconds'] = pwm_lsb_nanoseconds
+            app_state['chain_length'] = chain_length
+            app_state['parallel'] = parallel
+            app_state['show_refresh_rate'] = show_refresh_rate
 
             # Save settings persistently to a JSON file
             settings_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
@@ -547,8 +835,19 @@ def start_web_server(app_state, sp_oauth):
                     'idle_mode': idle_mode,
                     'idle_color': idle_color,
                     'idle_block_start': idle_block_start,
-                    'idle_block_end': idle_block_end
+                    'idle_block_end': idle_block_end,
+                    'matrix_rows': matrix_rows,
+                    'matrix_cols': matrix_cols,
+                    'gpio_slowdown': gpio_slowdown,
+                    'limit_refresh_rate_hz': limit_refresh_rate_hz,
+                    'pwm_lsb_nanoseconds': pwm_lsb_nanoseconds,
+                    'chain_length': chain_length,
+                    'parallel': parallel,
+                    'show_refresh_rate': show_refresh_rate
                 }, f)
+
+            if matrix_config_changed:
+                app_state['restart'] = True
         except Exception as e:
             return f"Fehler beim Speichern der Einstellungen: {str(e)}"
         redirect('/')
