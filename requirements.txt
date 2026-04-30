@@ -8,7 +8,8 @@ pillow==12.2.0
 python-dotenv==1.2.2
 redis==7.4.0
 requests==2.33.1
-rgbmatrix @ file:///home/dietpi/matrix/rpi-rgb-led-matrix
+# rgbmatrix is built from source by install.sh
+# rgbmatrix @ file:///opt/rpi-rgb-led-matrix
 scikit_build_core==0.12.2
 setuptools==82.0.1
 spotipy==2.26.0
