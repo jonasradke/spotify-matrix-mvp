@@ -1,6 +1,7 @@
 import os
 import json
 import threading
+import subprocess
 import bottle
 import ssl
 from wsgiref.simple_server import make_server
@@ -719,36 +720,29 @@ def start_web_server(app_state, sp_oauth):
 
     def get_current_version():
         try:
-            git_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.git')
-            head_path = os.path.join(git_dir, 'HEAD')
-            with open(head_path, 'r') as f:
-                head_content = f.read().strip()
-
-            if head_content.startswith('ref: '):
-                ref_path = os.path.join(git_dir, head_content[5:])
-                with open(ref_path, 'r') as ref_file:
-                    commit_hash = ref_file.read().strip()
-            else:
-                commit_hash = head_content
-
-            return f"v1.0.{commit_hash[:7]}"
-        except:
+            repo_dir = os.path.dirname(os.path.abspath(__file__))
+            result = subprocess.run(
+                ['git', '-C', repo_dir, 'rev-parse', '--short', 'HEAD'],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            commit_hash = result.stdout.strip()
+            return f"v1.0.{commit_hash}" if commit_hash else "Unbekannte Version"
+        except Exception:
             return "Unbekannte Version"
 
     def get_current_hash():
         try:
-            git_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.git')
-            head_path = os.path.join(git_dir, 'HEAD')
-            with open(head_path, 'r') as f:
-                head_content = f.read().strip()
-
-            if head_content.startswith('ref: '):
-                ref_path = os.path.join(git_dir, head_content[5:])
-                with open(ref_path, 'r') as ref_file:
-                    return ref_file.read().strip()
-
-            return head_content
-        except:
+            repo_dir = os.path.dirname(os.path.abspath(__file__))
+            result = subprocess.run(
+                ['git', '-C', repo_dir, 'rev-parse', 'HEAD'],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return result.stdout.strip()
+        except Exception:
             return ""
 
     @app.route('/manifest.webmanifest')
