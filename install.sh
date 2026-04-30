@@ -26,6 +26,17 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo "Install directory: $SCRIPT_DIR"
 echo ""
 
+# Determine which non-root user should own runtime files. Prefer existing 'dietpi', then SUDO_USER, else 'root'
+if id "dietpi" &>/dev/null; then
+  SERVICE_USER=dietpi
+elif [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+  SERVICE_USER=$SUDO_USER
+else
+  SERVICE_USER=root
+fi
+echo "Runtime files will be owned by: $SERVICE_USER"
+echo ""
+
 # Step 1: Update system packages
 echo -e "${YELLOW}[1/7] Updating system packages...${NC}"
 apt-get update
@@ -60,6 +71,8 @@ echo ""
 echo -e "${YELLOW}[2.6/9] Installing rpi-rgb-led-matrix Python bindings...${NC}"
 "$SCRIPT_DIR/.venv/bin/pip" install --upgrade pip setuptools wheel
 "$SCRIPT_DIR/.venv/bin/pip" install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
+# Ensure certifi and requests are present inside the virtualenv so TLS works
+"$SCRIPT_DIR/.venv/bin/pip" install --upgrade certifi requests
 echo -e "${GREEN}✓ rpi-rgb-led-matrix Python bindings installed${NC}"
 echo ""
 
@@ -142,8 +155,10 @@ if [ ! -f "$SCRIPT_DIR/settings.json" ]; then
   "show_refresh_rate": false
 }
 EOF
-  chmod 666 "$SCRIPT_DIR/settings.json"
-  echo -e "${GREEN}✓ Created settings.json with defaults${NC}"
+  # Create with sensible permissions and assign to service user
+  chown ${SERVICE_USER}:${SERVICE_USER} "$SCRIPT_DIR/settings.json"
+  chmod 644 "$SCRIPT_DIR/settings.json"
+  echo -e "${GREEN}✓ Created settings.json with defaults (owner: ${SERVICE_USER})${NC}"
 else
   echo -e "${GREEN}✓ settings.json already exists${NC}"
 fi
@@ -164,9 +179,32 @@ else
 fi
 echo ""
 
+# Verify certifi inside the venv points to an existing CA bundle; if not, create systemd drop-in to use system CA
+VENV_CERT_PATH="$SCRIPT_DIR/.venv/lib/python3.13/site-packages/certifi/cacert.pem"
+VENV_PY="$SCRIPT_DIR/.venv/bin/python"
+if "$VENV_PY" - <<PYTHON_CHECK
+import certifi, os, sys
+path = certifi.where()
+print(path)
+print('exists', os.path.exists(path))
+sys.exit(0 if os.path.exists(path) else 2)
+PYTHON_CHECK
+then
+  echo -e "${GREEN}✓ certifi appears healthy inside venv${NC}"
+else
+  echo -e "${YELLOW}⚠ certifi bundle missing inside venv — configuring system CA fallback${NC}"
+  mkdir -p /etc/systemd/system/spotify-matrix.service.d
+  cat > /etc/systemd/system/spotify-matrix.service.d/override.conf <<EOF
+[Service]
+Environment=SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+EOF
+  systemctl daemon-reload || true
+  echo -e "${GREEN}✓ systemd drop-in created to point to system CA bundle${NC}"
+fi
+
 # Step 9: Set file permissions for dietpi user
 echo -e "${YELLOW}[9/9] Setting up file permissions...${NC}"
-chown -R dietpi:dietpi "$SCRIPT_DIR"
+chown -R ${SERVICE_USER}:${SERVICE_USER} "$SCRIPT_DIR"
 chmod -R 755 "$SCRIPT_DIR"
 chmod 644 "$SCRIPT_DIR/settings.json"
 chmod 644 "$SCRIPT_DIR/.env" 2>/dev/null || true
