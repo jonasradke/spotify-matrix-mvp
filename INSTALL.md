@@ -39,18 +39,22 @@ sudo systemctl start spotify-matrix
 The `install.sh` script automates the following setup steps:
 
 1. **Updates system packages** - Ensures your system is current
-2. **Installs dependencies** - Python, build tools, image libraries, OpenSSL, and Cython
-2.5. **Installs rpi-rgb-led-matrix** - Installs hzeller's LED matrix Python bindings via pip (uses scikit-build-core)
-3. **Installs Python packages** - From requirements.txt (Spotipy, Bottle, etc.)
+2. **Installs dependencies** - Python, build tools, OpenSSL, and Cython
+2.5. **Creates Python virtual environment** - Isolated Python environment at `.venv/`
+2.6. **Installs rpi-rgb-led-matrix** - Installs hzeller's LED matrix Python bindings in the venv (uses scikit-build-core)
+3. **Installs Python packages** - From requirements.txt into the venv (Spotipy, Bottle, etc.)
 4. **Creates .env file** - Template for Spotify API credentials
 5. **Generates SSL certificates** - Self-signed certs for HTTPS on matrix.local
 6. **Sets up system user** - Creates `dietpi` user for privilege dropping
 7. **Initializes settings** - Creates default settings.json configuration
-8. **Installs systemd service** - Enables auto-start on boot
+8. **Installs systemd service** - Enables auto-start on boot using venv Python
+9. **Sets file permissions** - Configures ownership and permissions for the dietpi user
 
 ## Manual Installation (Step-by-Step)
 
 If you prefer more control or need to troubleshoot:
+
+**Note:** This installation uses a Python virtual environment (`.venv/`) for package isolation. This avoids PEP 668 restrictions and keeps dependencies separate from the system Python.
 
 ```bash
 # 1. Update system
@@ -64,33 +68,43 @@ sudo apt-get install -y python3 python3-pip python3-dev git build-essential \
 git clone https://github.com/jonasradke/spotify-matrix-mvp.git
 cd spotify-matrix-mvp
 
-# 4. Install rpi-rgb-led-matrix Python bindings (includes C++ library build)
-pip3 install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
+# 4. Create Python virtual environment
+python3 -m venv .venv
 
-# 5. Install Python dependencies
-pip3 install -r requirements.txt
+# 5. Install rpi-rgb-led-matrix Python bindings in venv
+.venv/bin/pip install --upgrade pip setuptools wheel
+.venv/bin/pip install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
 
-# 6. Create .env file with Spotify credentials
+# 6. Install Python dependencies in venv
+.venv/bin/pip install -r requirements.txt
+
+# 7. Create .env file with Spotify credentials
 cat > .env << EOF
 SPOTIFY_CLIENT_ID=your_client_id
 SPOTIFY_CLIENT_SECRET=your_client_secret
 SPOTIFY_REDIRECT_URI=https://matrix.local/callback
 EOF
 
-# 7. Generate SSL certificates
+# 8. Generate SSL certificates
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem \
   -days 3650 -nodes -subj "/CN=matrix.local"
 
-# 8. Create system user
+# 9. Create system user
 sudo useradd -r -s /bin/bash -d /home/dietpi -m dietpi
 
-# 9. Copy systemd service
+# 10. Copy systemd service
 sudo cp spotify-matrix.service /etc/systemd/system/
 sudo sed -i "s|/path/to/spotify-matrix-mvp|$(pwd)|g" /etc/systemd/system/spotify-matrix.service
 sudo systemctl daemon-reload
 sudo systemctl enable spotify-matrix
 
-# 10. Start the service
+# 11. Set permissions
+sudo chown -R dietpi:dietpi .
+chmod 644 settings.json
+chmod 644 .env
+chmod 644 cert.pem key.pem
+
+# 12. Start the service
 sudo systemctl start spotify-matrix
 ```
 

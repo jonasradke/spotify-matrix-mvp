@@ -48,19 +48,25 @@ apt-get install -y \
 echo -e "${GREEN}✓ System dependencies installed${NC}"
 echo ""
 
-# Step 2.5: Install rpi-rgb-led-matrix Python bindings
-echo -e "${YELLOW}[2.5/8] Installing rpi-rgb-led-matrix Python bindings...${NC}"
-pip3 install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
+# Step 2.5: Create Python virtual environment
+echo -e "${YELLOW}[2.5/9] Creating Python virtual environment...${NC}"
+python3 -m venv "$SCRIPT_DIR/.venv"
+echo -e "${GREEN}✓ Virtual environment created${NC}"
+echo ""
+
+# Step 2.6: Install rpi-rgb-led-matrix Python bindings in venv
+echo -e "${YELLOW}[2.6/9] Installing rpi-rgb-led-matrix Python bindings...${NC}"
+"$SCRIPT_DIR/.venv/bin/pip" install --upgrade pip setuptools wheel
+"$SCRIPT_DIR/.venv/bin/pip" install git+https://github.com/hzeller/rpi-rgb-led-matrix.git
 echo -e "${GREEN}✓ rpi-rgb-led-matrix Python bindings installed${NC}"
 echo ""
 
-# Step 3: Install Python dependencies
-echo -e "${YELLOW}[3/8] Installing Python dependencies...${NC}"
+# Step 3: Install Python dependencies in venv
+echo -e "${YELLOW}[3/9] Installing Python dependencies...${NC}"
 cd "$SCRIPT_DIR"
 
 if [ -f "requirements.txt" ]; then
-  pip3 install --upgrade pip setuptools wheel
-  pip3 install -r requirements.txt
+  "$SCRIPT_DIR/.venv/bin/pip" install -r requirements.txt
   echo -e "${GREEN}✓ Python dependencies installed${NC}"
 else
   echo -e "${RED}✗ requirements.txt not found in $SCRIPT_DIR${NC}"
@@ -69,7 +75,7 @@ fi
 echo ""
 
 # Step 4: Create .env file if it doesn't exist
-echo -e "${YELLOW}[4/8] Setting up environment configuration...${NC}"
+echo -e "${YELLOW}[4/9] Setting up environment configuration...${NC}"
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
   echo "SPOTIFY_CLIENT_ID=your_client_id_here" > "$SCRIPT_DIR/.env"
   echo "SPOTIFY_CLIENT_SECRET=your_client_secret_here" >> "$SCRIPT_DIR/.env"
@@ -82,7 +88,7 @@ fi
 echo ""
 
 # Step 5: Generate SSL certificates if they don't exist
-echo -e "${YELLOW}[5/8] Setting up SSL certificates...${NC}"
+echo -e "${YELLOW}[5/9] Setting up SSL certificates...${NC}"
 CERT_FILE="$SCRIPT_DIR/cert.pem"
 KEY_FILE="$SCRIPT_DIR/key.pem"
 
@@ -103,7 +109,7 @@ fi
 echo ""
 
 # Step 6: Create dietpi user if it doesn't exist (for privilege dropping)
-echo -e "${YELLOW}[6/8] Setting up system user for matrix...${NC}"
+echo -e "${YELLOW}[6/9] Setting up system user for matrix...${NC}"
 if ! id "dietpi" &>/dev/null; then
   useradd -r -s /bin/bash -d /home/dietpi -m dietpi
   echo -e "${GREEN}✓ Created dietpi user${NC}"
@@ -111,6 +117,8 @@ else
   echo -e "${GREEN}✓ dietpi user already exists${NC}"
 fi
 
+# Step 7: Create default settings.json if it doesn't exist
+echo -e "${YELLOW}[7/9] Initializing settings file...${NC}"
 # Create settings.json with default values if it doesn't exist
 if [ ! -f "$SCRIPT_DIR/settings.json" ]; then
   cat > "$SCRIPT_DIR/settings.json" << 'EOF'
@@ -139,8 +147,8 @@ else
 fi
 echo ""
 
-# Step 7: Install systemd service
-echo -e "${YELLOW}[7/8] Setting up systemd service...${NC}"
+# Step 8: Install and enable systemd service
+echo -e "${YELLOW}[8/9] Setting up systemd service...${NC}"
 if [ -f "$SCRIPT_DIR/spotify-matrix.service" ]; then
   # Replace the working directory in the service file with the actual install path
   sed "s|/path/to/spotify-matrix-mvp|$SCRIPT_DIR|g" "$SCRIPT_DIR/spotify-matrix.service" > /etc/systemd/system/spotify-matrix.service
@@ -152,6 +160,17 @@ else
   echo -e "${RED}✗ spotify-matrix.service not found${NC}"
   echo -e "${YELLOW}  You may need to install the service manually${NC}"
 fi
+echo ""
+
+# Step 9: Set file permissions for dietpi user
+echo -e "${YELLOW}[9/9] Setting up file permissions...${NC}"
+chown -R dietpi:dietpi "$SCRIPT_DIR"
+chmod -R 755 "$SCRIPT_DIR"
+chmod 644 "$SCRIPT_DIR/settings.json"
+chmod 644 "$SCRIPT_DIR/.env" 2>/dev/null || true
+chmod 644 "$SCRIPT_DIR/cert.pem"
+chmod 644 "$SCRIPT_DIR/key.pem"
+echo -e "${GREEN}✓ File permissions configured${NC}"
 echo ""
 
 # Final instructions
