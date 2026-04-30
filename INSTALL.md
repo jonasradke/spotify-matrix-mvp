@@ -58,8 +58,7 @@ sudo apt-get update && sudo apt-get upgrade -y
 
 # 2. Install system dependencies
 sudo apt-get install -y python3 python3-pip python3-dev git build-essential \
-  libopenjp2-7-dev libtiff5-dev libharfbuzz0b libwebp6 libjasper1 \
-  libatlas-base-dev cython3 openssl curl
+  cython3 openssl curl
 
 # 3. Clone and navigate to repo
 git clone https://github.com/jonasradke/spotify-matrix-mvp.git

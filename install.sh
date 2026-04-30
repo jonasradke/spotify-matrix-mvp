@@ -34,23 +34,13 @@ echo -e "${GREEN}✓ System packages updated${NC}"
 echo ""
 
 # Step 2: Install system dependencies
-echo -e "${YELLOW}[2/7] Installing system dependencies...${NC}"
+echo -e "${YELLOW}[2/8] Installing system dependencies...${NC}"
 apt-get install -y \
   python3 \
   python3-pip \
   python3-dev \
   git \
   build-essential \
-  libopenjp2-7 \
-  libopenjp2-7-dev \
-  libtiff5 \
-  libtiff5-dev \
-  libharfbuzz0b \
-  libwebp6 \
-  libjasper1 \
-  libatlas-base-dev \
-  libjasper-dev \
-  python3-pil \
   cython3 \
   openssl \
   curl
