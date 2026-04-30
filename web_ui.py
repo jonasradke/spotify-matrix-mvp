@@ -767,6 +767,15 @@ def start_web_server(app_state, sp_oauth):
     @app.route('/')
     def index():
         has_token = bool(sp_oauth.get_cached_token())
+        # Debug: log served version/hash for troubleshooting duplicated UI and unknown version
+        try:
+            ver = get_current_version()
+            lhash = get_current_hash()
+        except Exception:
+            ver = 'Unbekannte Version'
+            lhash = ''
+        print(f"Serving index — version={ver}, local_hash={'(none)' if not lhash else lhash}")
+
         return template(HTML_TEMPLATE, 
                         has_token=has_token, 
                         brightness=app_state['brightness'], 
@@ -797,11 +806,25 @@ def start_web_server(app_state, sp_oauth):
     def callback():
         # Spotify redirects here back with a code
         code = request.query.code
+        error = request.query.error
+        if error:
+            # Spotify returned an error (e.g., access_denied)
+            print(f"Spotify callback error: {error}")
+            return f"OAuth-Fehler: {error}"
+
         if code:
-            # This writes the .cache file automatically
-            sp_oauth.get_access_token(code, as_dict=False)
-            app_state['reload_spotify'] = True # dynamically reload spotify client
-            redirect('/')
+            try:
+                # This writes the .cache file automatically
+                sp_oauth.get_access_token(code, as_dict=False)
+                app_state['reload_spotify'] = True  # dynamically reload spotify client
+                redirect('/')
+            except Exception as e:
+                import traceback
+                tb = traceback.format_exc()
+                print("Exception while handling /callback:\n", tb)
+                # Return a simple error page so the user sees what went wrong
+                return f"<html><body style='background:#121212;color:#fff;font-family:sans-serif;padding:40px;'><h2>Fehler beim Verarbeiten des Spotify-Callback</h2><pre style='color:#ff8080;'>" + tb.replace('<', '&lt;').replace('>', '&gt;') + "</pre><p><a href=\"/\">Zurück</a></p></body></html>"
+
         return "Fehler beim Erzeugen des Tokens."
 
     @app.route('/save_settings', method='POST')
