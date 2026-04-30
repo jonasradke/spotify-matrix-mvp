@@ -152,7 +152,7 @@ echo ""
 # Step 8: Install and enable systemd service
 echo -e "${YELLOW}[8/9] Setting up systemd service...${NC}"
 if [ -f "$SCRIPT_DIR/spotify-matrix.service" ]; then
-  # Replace the working directory in the service file with the actual install path
+  # Replace the placeholder path in the service file with the actual install path
   sed "s|/path/to/spotify-matrix-mvp|$SCRIPT_DIR|g" "$SCRIPT_DIR/spotify-matrix.service" > /etc/systemd/system/spotify-matrix.service
   
   systemctl daemon-reload

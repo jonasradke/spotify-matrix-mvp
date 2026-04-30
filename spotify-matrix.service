@@ -12,13 +12,13 @@ Type=simple
 # Must run as root initially to access the Pi's PWM hardware. 
 # The Python script will drop privileges to 'dietpi' afterward.
 User=root
-WorkingDirectory=/home/dietpi/spotify-matrix-mvp
+WorkingDirectory=/path/to/spotify-matrix-mvp
 
 # Pin the service to CPU core 3 (0-indexed)
 CPUAffinity=3
 
 # Use the Python executable from the virtual environment directly
-ExecStart=/home/dietpi/spotify-matrix-mvp/.venv/bin/python /home/dietpi/spotify-matrix-mvp/main.py
+ExecStart=/path/to/spotify-matrix-mvp/.venv/bin/python /path/to/spotify-matrix-mvp/main.py
 
 # Auto-restart on both clean exits (sys.exit(0) triggered by the Web UI) and crashes (WiFi drops)
 Restart=always
