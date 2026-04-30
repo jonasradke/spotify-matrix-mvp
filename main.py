@@ -191,6 +191,18 @@ sp_oauth = SpotifyOAuth(
     redirect_uri="https://matrix.local/callback" # Change matrix IP if mDNS isn't working
 )
 
+# Debug: show what credentials are being used
+client_id = os.getenv('SPOTIPY_CLIENT_ID', '').strip()
+client_secret = os.getenv('SPOTIPY_CLIENT_SECRET', '').strip()
+if not client_id or client_id == 'your_client_id_here':
+    print("⚠ WARNING: SPOTIPY_CLIENT_ID not set or is placeholder 'your_client_id_here'")
+    print("  Edit .env file with real Spotify Developer credentials")
+if not client_secret or client_secret == 'your_client_secret_here':
+    print("⚠ WARNING: SPOTIPY_CLIENT_SECRET not set or is placeholder 'your_client_secret_here'")
+    print("  Edit .env file with real Spotify Developer credentials")
+if client_id and client_id != 'your_client_id_here':
+    print(f"✓ Using Spotify client_id: {client_id[:20]}...")
+
 # Start web interface in the background
 start_web_server(app_state, sp_oauth)
 
