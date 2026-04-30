@@ -240,12 +240,13 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
-    <h2>Spotify Matrix</h2>
-    <p class="page-intro">Steuere Spotify, Display und WLAN auf einer responsiven Oberfläche. Die feineren Matrix-Optionen sind jetzt in einem separaten Bereich gesammelt.</p>
+
+    <h2 style="margin-bottom:10px;">Spotify Matrix</h2>
+    <p class="page-intro" style="margin-bottom:32px;">Minimalistisches Dashboard für Spotify & Matrix-Display</p>
 
     <div class="grid-container">
         <div class="card">
-            <h3>Spotify Verbindung</h3>
+            <h3 style="margin-bottom:10px;">Spotify</h3>
             % if has_token:
             <div id="now-playing-container">
                 <div class="now-playing">
@@ -278,17 +279,16 @@ HTML_TEMPLATE = """
                 <a href="/logout" class="btn btn-red" style="margin-top: 25px;">Konto trennen</a>
             </div>
         % else:
-            <div class="status">
+            <div class="status" style="justify-content:center;">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 Nicht verbunden
             </div>
-            <a href="/login" class="btn btn-green">Mit Spotify verbinden</a>
+            <a href="/login" class="btn btn-green">Verbinden</a>
         % end
     </div>
 
     <div class="card">
-        <h3>Anzeigeeinstellungen</h3>
-        <p class="section-kicker">Basiswerte für Helligkeit, Idle-Verhalten und das Fortschritts-Overlay.</p>
+        <h3 style="margin-bottom:10px;">Anzeige</h3>
         <form action="/save_settings" method="POST">
             <div class="setting-row">
                 <label>Fortschrittsbalken anzeigen</label>
@@ -378,13 +378,12 @@ HTML_TEMPLATE = """
                 </div>
             </details>
             
-            <button type="submit" class="btn btn-blue">Einstellungen anwenden</button>
+            <button type="submit" class="btn btn-blue">Speichern</button>
         </form>
     </div>
 
     <div class="card">
-        <h3>Netzwerkeinstellungen</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Verbinde die Matrix mit einem neuen WLAN-Netzwerk.</p>
+        <h3 style="margin-bottom:10px;">WLAN</h3>
         <form action="/system_wifi" method="POST">
             <label style="margin-bottom: 5px;">WLAN-Name (SSID)</label>
             <input type="text" name="ssid" placeholder="WLAN-Namen eingeben" required style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
@@ -392,17 +391,16 @@ HTML_TEMPLATE = """
             <label style="margin-bottom: 5px;">WLAN-Passwort</label>
             <input type="text" name="password" placeholder="Leer lassen bei offenem Netzwerk" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #333; background: #121212; color: white; box-sizing: border-box; font-size: 1rem;">
             
-            <button type="submit" class="btn btn-green" style="margin-top: 0;">WLAN speichern & neu starten</button>
+            <button type="submit" class="btn btn-green" style="margin-top: 0;">Speichern & Neustart</button>
         </form>
     </div>
 
     <div class="card">
-        <h3>Systemverwaltung</h3>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 5px;">Updates und Stromversorgung verwalten.</p>
-        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 15px;">Version: <span style="color: var(--spotify-green);">{{version}}</span></p>
-        <p class="matrix-readout">Aktuelle Refresh-Rate: <span style="color: var(--spotify-green);">{{limit_refresh_rate_hz}} Hz</span></p>
+        <h3 style="margin-bottom:10px;">System</h3>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;">Version: <span style="color: var(--spotify-green);">{{version}}</span></p>
+        <p class="matrix-readout">Refresh-Rate: <span style="color: var(--spotify-green);">{{limit_refresh_rate_hz}} Hz</span></p>
         <div style="display: flex; gap: 10px; flex-direction: column;">
-            <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Auf Updates prüfen</button>
+            <button type="button" id="checkUpdateBtn" class="btn btn-blue" style="margin-top: 5px;" onclick="checkUpdates()">Update prüfen</button>
             <form id="updateForm" action="/system_update" method="POST" style="display: none;"></form>
             
             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -992,11 +990,42 @@ def start_web_server(app_state, sp_oauth):
     def system_update():
         import subprocess
         try:
-            # Tell the Pi to pull the absolute newest changes from GitHub
+            # Always reset local changes before pulling to avoid merge errors
             env = os.environ.copy()
             env['GIT_TERMINAL_PROMPT'] = '0'
             cwd_path = os.path.dirname(os.path.abspath(__file__))
 
+            # Hard reset to discard any local changes
+            reset_result = subprocess.run(
+                ['git', 'reset', '--hard'],
+                env=env,
+                cwd=cwd_path,
+                capture_output=True,
+                text=True
+            )
+            if reset_result.returncode != 0:
+                error_output = (reset_result.stderr or reset_result.stdout or 'Unknown error').strip()
+                error_output = error_output[-1200:]
+                return f"""
+                <html>
+                <head>
+                    <style>
+                        body {{ background-color:#121212; color:white; font-family:sans-serif; text-align:center; padding:40px; }}
+                        p {{ color:#b3b3b3; line-height: 1.5; }}
+                        pre {{ text-align: left; margin: 20px auto 0 auto; max-width: 720px; white-space: pre-wrap; word-break: break-word; background:#181818; border:1px solid #333; border-radius:8px; padding:12px; color:#ff8080; }}
+                        a {{ color:#1DB954; }}
+                    </style>
+                </head>
+                <body>
+                    <h2>Update fehlgeschlagen</h2>
+                    <p>Git-Reset fehlgeschlagen. Bitte prüfe die Dateiberechtigungen.</p>
+                    <pre>{error_output}</pre>
+                    <p><a href=\"/\">Zurück zu den Einstellungen</a></p>
+                </body>
+                </html>
+                """
+
+            # Now pull the latest changes
             result = subprocess.run(
                 ['git', 'pull'],
                 env=env,
